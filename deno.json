@@ -1,0 +1,7 @@
+{
+  "tasks": {
+    "test": "deno test --coverage=coverage tests/",
+    "coverage": "deno coverage coverage --lcov --include='src/' > coverage.lcov"
+  },
+  "fmt": { "useTabs": false, "lineWidth": 100 }
+}

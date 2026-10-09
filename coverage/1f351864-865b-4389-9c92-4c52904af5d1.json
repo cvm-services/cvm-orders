@@ -1,0 +1,136 @@
+{
+  "scriptId": "63",
+  "url": "file:///home/c03rad0r/repos/cvm-orders/src/store.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 0,
+          "endOffset": 1351,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "InvalidTransitionError",
+      "ranges": [
+        {
+          "startOffset": 228,
+          "endOffset": 353,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [
+        {
+          "startOffset": 384,
+          "endOffset": 403,
+          "count": 3
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "create",
+      "ranges": [
+        {
+          "startOffset": 407,
+          "endOffset": 691,
+          "count": 4
+        },
+        {
+          "startOffset": 464,
+          "endOffset": 504,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "get",
+      "ranges": [
+        {
+          "startOffset": 694,
+          "endOffset": 791,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "transition",
+      "ranges": [
+        {
+          "startOffset": 794,
+          "endOffset": 1114,
+          "count": 5
+        },
+        {
+          "startOffset": 871,
+          "endOffset": 906,
+          "count": 0
+        },
+        {
+          "startOffset": 955,
+          "endOffset": 1005,
+          "count": 1
+        },
+        {
+          "startOffset": 1005,
+          "endOffset": 1113,
+          "count": 4
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "queue",
+      "ranges": [
+        {
+          "startOffset": 1117,
+          "endOffset": 1248,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1184,
+          "endOffset": 1207,
+          "count": 2
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        {
+          "startOffset": 1213,
+          "endOffset": 1242,
+          "count": 1
+        }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "all",
+      "ranges": [
+        {
+          "startOffset": 1251,
+          "endOffset": 1348,
+          "count": 0
+        }
+      ],
+      "isBlockCoverage": false
+    }
+  ]
+}
