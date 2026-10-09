@@ -8,7 +8,7 @@ function json(body: unknown, status = 200) {
     headers: { "content-type": "application/json", "access-control-allow-origin": "*" },
   });
 }
-function route(req: Request): Response {
+async function route(req: Request): Promise<Response> {
   const url = new URL(req.url);
   if (req.method === "OPTIONS") {
     return new Response(null, {
