@@ -18,16 +18,8 @@ export class CardMaterialRefused extends Error {
 const CARD_KEYS =
   /^(pan|card[_ -]?(number|no|num)|cvv|cvc|cvn|csc|security[_ -]?code|expir(y|es|ation)|exp[_ -]?date|cardholder|card[_ -]?holder|ccnum|credit[_ -]?card|track2)$/i;
 
-/**
- * Luhn-valid 13..19 digit strings are treated as a PAN.
- *
- * A leading "+" marks a phone number (the order payload carries
- * `customer.phone`) and is never a PAN, so it is exempt.
- */
-export function looksLikePan(value: string): boolean {
-  if (value.trimStart().startsWith("+")) return false;
-  const digits = value.replace(/[^0-9]/g, "");
-  if (digits.length < 13 || digits.length > 19) return false;
+/** Luhn check over a pure digit string. */
+function passesLuhn(digits: string): boolean {
   let sum = 0;
   let alt = false;
   for (let i = digits.length - 1; i >= 0; i--) {
@@ -42,13 +34,56 @@ export function looksLikePan(value: string): boolean {
   return sum % 10 === 0;
 }
 
+/** The PAN window. Not a knob: 13..19 + Luhn is what makes this check mean anything. */
+function inPanWindow(digits: string): boolean {
+  return digits.length >= 13 && digits.length <= 19;
+}
+
 /**
- * An ISO-8601 timestamp is never card material, but stripping its separators
- * leaves a 17-digit run that passes the Luhn check for ~1 in 10 timestamps
- * (measured: 60 of 600 consecutive seconds). The receipt the console posts on
- * `placed` carries `captured_at` = `new Date().toISOString()`, so without this
- * exemption the guard refused a legitimate receipt at random — the same defect
- * the console fixed in its own copy of this guard (cvm-registry t_4726349b).
+ * Luhn-valid 13..19 digit strings are treated as a PAN, both as a whole value
+ * and as a run inside one.
+ *
+ * Two shapes have to be refused, and neither check alone covers both:
+ *
+ * * the value *is* a PAN, however it is grouped — a 4-4-4-4 spaced or dashed
+ *   card number. Caught by stripping the value and testing it once.
+ * * the value *contains* one — `"pi_3Qk9Zx2eZvKYlo2C 4242424242424242"`, the
+ *   plausible paste of a card number after a PSP reference. Caught by scanning
+ *   the contiguous digit runs, which the whole-value form misses: stripping
+ *   concatenates the reference's own digits with the card number and lands
+ *   outside the window (the console's copy of this guard has exactly that gap;
+ *   `cvm-registry` t_d38f4d20 holds the decision for the client half).
+ *
+ * A leading "+" marks a phone number (the order payload carries
+ * `customer.phone`) and is never a PAN, so it is exempt.
+ *
+ * Residual, stated rather than hidden: a *space-grouped* PAN that follows
+ * another digit run in the same value (`"ref 1234 " + a 4-4-4-4 grouped PAN`)
+ * is stripped to more than 19 digits and has no 13..19 run, so it is not
+ * caught. Closing it needs sliding windows inside the stripped value, which
+ * would refuse the service's own epoch-millisecond-shaped data at random — the
+ * bug class the ISO exemption below exists to fix. See `tests/hygiene_test.ts`.
+ */
+export function looksLikePan(value: string): boolean {
+  if (value.trimStart().startsWith("+")) return false;
+  const stripped = value.replace(/[^0-9]/g, "");
+  if (inPanWindow(stripped) && passesLuhn(stripped)) return true;
+  for (const run of value.match(/[0-9]+/g) ?? []) {
+    if (inPanWindow(run) && passesLuhn(run)) return true;
+  }
+  return false;
+}
+
+/**
+ * An ISO-8601 timestamp is never card material. Belt and braces: scanning digit
+ * runs no longer sees a timestamp as PAN-shaped at all, but the exemption is
+ * kept because the whole-value form did — stripping the separators from
+ * `new Date().toISOString()` leaves a 17-digit run, and ~1 in 10 of those pass
+ * the Luhn check (measured: 60 of 600 consecutive seconds). The receipt the
+ * console posts on `placed` carries `captured_at` = `new Date().toISOString()`,
+ * so that form refused a legitimate receipt at random — the same defect the
+ * console fixed in its own copy of this guard (committed as `1d53cac` on
+ * `pr/console-happy-path-video`, found by `cvm-registry` t_4726349b).
  */
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?$/;
 

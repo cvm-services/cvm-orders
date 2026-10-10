@@ -17,7 +17,7 @@ export interface SignOptions {
   content?: string;
 }
 
-/** Chaallenge-bound credential: exactly what the deployed console signs at sign-in. */
+/** Challenge-bound credential: exactly what the deployed console signs at sign-in. */
 export function challengeBoundEvent(
   nonce: string,
   challengeUrl: string,

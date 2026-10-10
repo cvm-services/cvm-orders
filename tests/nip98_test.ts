@@ -49,7 +49,12 @@ Deno.test("npub/hex helpers agree with the reference implementation", () => {
   assertEquals(normalizePubkey(facilitatorPubkey.toUpperCase()), facilitatorPubkey);
   assertEquals(normalizePubkey(nip19.npubEncode(facilitatorPubkey)), facilitatorPubkey);
   assert(!decodeNpub(facilitatorPubkey), "hex is not an npub");
-  assert(!decodeNpub(nip19.npubEncode(facilitatorPubkey).slice(0, -1) + "q"), "checksum enforced");
+  // Deterministic corruption: the fixture key is generated per run, so appending
+  // a fixed character is a no-op ~1 run in 32 (when the npub already ends in it)
+  // and the test would pass without probing anything.
+  const npub = nip19.npubEncode(facilitatorPubkey);
+  const last = npub.slice(-1);
+  assert(!decodeNpub(npub.slice(0, -1) + (last === "q" ? "p" : "q")), "checksum enforced");
   let threw = false;
   try {
     normalizePubkey("not-a-key");

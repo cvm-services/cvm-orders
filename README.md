@@ -71,7 +71,15 @@ does not.
 Card material never enters this service: `POST /orders` payloads and receipts pass through
 `assertNoCardMaterial`, which refuses card field names and Luhn-valid PAN-shaped values with HTTP
 422 before any state change. `payment_reference` is a PSP/terminal reference, never a card number.
-(ISO-8601 timestamps are exempt from the PAN heuristic — see `src/hygiene.ts`.)
+
+The PAN check refuses two shapes: a value that *is* a card number however it is grouped
+(`"4111 1111 1111 1111"`) and a card number *embedded* in a longer value
+(`"pi_3Qk9Zx2eZvKYlo2C <card>"`, the plausible paste after a PSP reference — the client half of
+this guard misses that one, see `cvm-registry` t_d38f4d20). Known residual, stated rather than
+hidden: a *space-grouped* card number that follows another digit run in the same value is not
+caught. ISO-8601 timestamps are exempt from the heuristic — without that exemption the guard
+refuses the console's own `captured_at` at random. Details and the measured rates are in
+`src/hygiene.ts` and `tests/hygiene_test.ts`.
 
 ## Deploy
 
