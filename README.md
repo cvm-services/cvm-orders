@@ -2,9 +2,13 @@
 
 Small Deno service that is the source of truth for facilitated order status.
 
-Lifecycle: `paid -> placing -> placed -> ready` or `refunded`. State changes are explicit and
-illegal transitions return HTTP 409. The customer polls `GET /orders/:id`; the facilitator polls
-`GET /orders/queue`.
+Lifecycle: `awaiting_payment -> paid -> placing -> placed -> ready`, or `awaiting_payment ->
+expired`, or `refunded` before placement. State changes are explicit and illegal transitions return
+HTTP 409. The customer polls `GET /orders/:id`; the facilitator polls `GET /orders/queue`.
+
+An order is **born `awaiting_payment`, never `paid`**. `paid` is reachable only through a verified
+payment-rail settlement (ADR-0008), so `GET /orders/queue` — the facilitator's payable list — only
+ever contains orders whose sats are already final.
 
 ## Run
 
@@ -13,9 +17,42 @@ deno task test
 FACILITATOR_NPUB=npub1... deno run --allow-net --allow-env main.ts
 ```
 
-Endpoints: `POST /orders` (`{id,payload}`), `GET /orders/:id`,
+Endpoints: `POST /orders` (the basket: `{venue_slug, items, fulfilment, inputs}`),
+`GET /orders/:id/invoice`, `GET /orders/:id`,
 `POST /orders/:id/transition` (`{state, from?, receipt?}`), `GET /orders/queue`, and
 `GET /auth/challenge`.
+
+## Pricing and the sats gate (ADR-0008)
+
+Prices are **never** taken from the client. `POST /orders` receives `{venue_slug, items, fulfilment,
+inputs}` and the server recomputes every line from the committed catalog (`config/venues.json`, a
+pinned copy of the PWA's own `/menu.json`; `src/catalog.ts`). A client sending `amount: 1` for a €12
+pizza does not change the charge — there are tests for both directions. An item is identified by
+`sku` **or** by exact name, because the shipped client sends no sku. A basket that cannot be priced
+is a 400 with a reason, and creates no order.
+
+The facilitator fee is **`floor(8% of subtotal)` in integer sats**, added to the subtotal. The
+rounding rule is deliberate (floor; never round-up, never float) and the boundary is pinned in
+`tests/catalog_test.ts`. `POST /orders` returns `{id, state, subtotal, fee, total, expires_at}` and
+honours an `Idempotency-Key` header, so a client retry returns the same order rather than creating a
+second one.
+
+Sats are final **before** any fiat spend. The gate is structural, not advisory:
+
+* `GET /orders/:id/invoice` creates the BOLT11 **once** per order through the rail (`src/rail.ts`),
+  caches it, and returns `{bolt11, qr, expires_at, total}`; repeat calls return the same invoice
+  while it is unexpired. `qr` is a self-contained `data:` URI, so the client's `<img src>` needs no
+  extra fetch. With no rail configured the endpoint is a **503 with a machine-readable body — never
+  a bogus invoice**.
+* `GET /orders/:id` asks the rail for settlement and performs **exactly one** compare-and-set
+  `awaiting_payment -> paid`. A second poll does not transition again. An expired quote expires the
+  order and can never pay it.
+* `POST /orders/:id/transition` **refuses** `awaiting_payment -> paid` unless the settlement is
+  rail-verified, so the public API cannot be used to post an order into `paid`.
+
+The rail is `CASHU_MINT_URL` (Cashu NUT-04 over BOLT11). Tests inject an in-memory fake and need no
+network. Which mint to point at is [its own document](docs/mint-discovery.md): candidates are probed
+for NUT-04/05/07 capability rather than trusted.
 
 ## Authentication (NIP-98, verified here)
 
@@ -84,7 +121,10 @@ refuses the console's own `captured_at` at random. Details and the measured rate
 ## Deploy
 
 Run behind the existing reverse proxy as a systemd service, bind localhost, and set
-`FACILITATOR_NPUB` in an environment file (`cvm-registry` `deploy/orders-setup.sh`). Persist the
+`FACILITATOR_NPUB` in an environment file (`cvm-registry` `deploy/orders-setup.sh`). Set
+`CASHU_MINT_URL` to a mint that passed `scripts/discover-mints.ts` (see
+[docs/mint-discovery.md](docs/mint-discovery.md)); without it the invoice endpoint answers 503 and
+the PWA's Pay button cannot complete a payment. Persist the
 store behind the next database adapter before production; this in-memory implementation is for the
 working demo only — a restart empties the queue, and receipts live no longer than the process.
 

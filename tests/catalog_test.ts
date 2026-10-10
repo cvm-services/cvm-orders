@@ -11,9 +11,9 @@
  * and both resolve to the same catalog row and the same catalog price.
  */
 import { assert, assertEquals, assertThrows } from "jsr:@std/assert@1";
-import { CatalogRefusal, feeSats, loadCatalog, priceOrder } from "../src/catalog.ts";
+import { type Catalog, CatalogRefusal, feeSats, loadCatalog, priceOrder } from "../src/catalog.ts";
 
-const fixture = {
+const fixture: Catalog = {
   sats_per_eur: 1000,
   option_surcharges_sats: { "Bacon": 150, "Jalapeños": 90, "Extra cheese": 120 },
   venues: [

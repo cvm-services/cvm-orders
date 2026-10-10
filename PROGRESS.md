@@ -7,8 +7,13 @@ Worktree: /home/c03rad0r/worktrees/order-invoice @ origin/main 3e92e97, branch f
 - [x] RED tests committed + failing output captured (lifecycle 6/6 FAILED; catalog/invoice did not load)
 - [x] store: awaiting_payment/expired + money fields + ensureInvoice (one invoice/order, shared in flight)
 - [x] src/catalog.ts: server-side pricing (fee floor(8%), boundary pinned; sku OR exact-name identity)
-- [ ] POST /orders (validate + recompute + Idempotency-Key)
-- [ ] GET /orders/:id/invoice (once per order, cached, 503 without rail)
-- [ ] GET /orders/:id rail settlement -> exactly one CAS to paid; expired stays expired
-- [ ] POST /orders/:id/transition refuses awaiting_payment -> paid unless rail-verified
-- [ ] deno check + deno task test green; push; PR; REPORT.md
+- [x] POST /orders (validate + recompute + Idempotency-Key)
+- [x] GET /orders/:id/invoice (once per order, cached, 503 without rail)
+- [x] GET /orders/:id rail settlement -> exactly one CAS to paid; expired stays expired
+- [x] POST /orders/:id/transition refuses awaiting_payment -> paid unless rail-verified
+- [x] deno check clean; deno task test green (98 passed / 0 failed)
+- [x] README updated; REPORT.md written
+
+RESUME NOTE (2026-10-10): the dispatched worker finished A-F but its session timed out at 3600s
+before it could commit/push/PR. Manager recovered the tree, fixed one dangling `store` reference in
+tests/route_test.ts (line 238 destructured only `handle`), verified 98/0, and shipped.
