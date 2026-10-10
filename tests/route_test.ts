@@ -252,3 +252,55 @@ Deno.test("an unusable or missing FACILITATOR_NPUB closes the facilitator routes
   assertEquals(challenge.status, 200);
   assertEquals((await challenge.json() as { facilitatorNpub: string | null }).facilitatorNpub, null);
 });
+
+Deno.test("over real HTTP: unauthenticated is 401 and a signed call persists the receipt", async () => {
+  const { store, handle } = app();
+  const server = Deno.serve({ hostname: "127.0.0.1", port: 0 }, handle);
+  const { port } = server.addr as Deno.NetAddr;
+  const base = `http://127.0.0.1:${port}`;
+  const headers = { "content-type": "application/json" };
+
+  try {
+    const created = await fetch(`${base}/orders`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ id: "o-live", payload: { item: "pizza" } }),
+    });
+    assertEquals(created.status, 201);
+
+    const denied = await fetch(`${base}/orders/o-live/transition`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ state: "placing" }),
+    });
+    assertEquals(denied.status, 401);
+    assertEquals(store.get("o-live")?.state, "paid", "the socket-level caller moved nothing");
+
+    // Sign-in against the challenge this very server issued, as the console does.
+    const challenge = await (await fetch(`${base}/auth/challenge`)).json() as { nonce: string };
+    const header = authHeader(challengeBoundEvent(challenge.nonce, CONSOLE_CHALLENGE_URL, { created_at: T0 }));
+    const signed = { ...headers, authorization: header };
+
+    assertEquals(
+      (await fetch(`${base}/orders/o-live/transition`, {
+        method: "POST",
+        headers: signed,
+        body: JSON.stringify({ state: "placing" }),
+      })).status,
+      200,
+    );
+    const placed = await fetch(`${base}/orders/o-live/transition`, {
+      method: "POST",
+      headers: signed,
+      body: JSON.stringify({ state: "placed", from: "placing", receipt: RECEIPT }),
+    });
+    assertEquals(placed.status, 200);
+    assertEquals((await placed.json() as Order).receipt, RECEIPT);
+
+    const polled = await fetch(`${base}/orders/o-live`);
+    assertEquals(polled.status, 200);
+    assertEquals((await polled.json() as Order).receipt, RECEIPT);
+  } finally {
+    await server.shutdown();
+  }
+});
