@@ -1,0 +1,13 @@
+{
+  "_comment": "Seed mint candidates. These are PROBED, not trusted: discover-mints.ts verifies each against live NUT-06 capabilities before one is selected. Verified reachable 2026-10-10.",
+  "relays": [
+    "wss://relay.damus.io",
+    "wss://relay.primal.net",
+    "wss://nos.lol"
+  ],
+  "mints": [
+    { "url": "https://mint.minibits.cash/Bitcoin", "note": "Minibits, cdk-mintd/0.17.7; also NUT-15 MPP + onchain" },
+    { "url": "https://mint.coinos.io", "note": "Coinos (Nutshell/0.21.0). NOTE: coinos.io is the wallet; the MINT is mint.coinos.io" },
+    { "url": "https://mint.cashu.chat", "note": "cashu.chat reference mint (Nutshell/0.20.2)" }
+  ]
+}

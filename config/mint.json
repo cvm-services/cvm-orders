@@ -1,0 +1,38 @@
+{
+  "selected": "https://mint.minibits.cash/Bitcoin",
+  "score": 93,
+  "version": "cdk-mintd/0.17.7",
+  "probed_at": "2026-10-10T15:37:39.972Z",
+  "min_score": 60,
+  "ranked": [
+    {
+      "url": "https://mint.minibits.cash/Bitcoin",
+      "score": 93,
+      "latencyMs": 289,
+      "version": "cdk-mintd/0.17.7",
+      "source": "seed"
+    },
+    {
+      "url": "https://mint.cashu.chat",
+      "score": 91,
+      "latencyMs": 1347,
+      "version": "Nutshell/0.20.2",
+      "source": "seed"
+    },
+    {
+      "url": "https://mint.coinos.io",
+      "score": 91,
+      "latencyMs": 716,
+      "version": "Nutshell/0.21.0",
+      "source": "seed"
+    },
+    {
+      "url": "https://mint.gitvid.net",
+      "score": 91,
+      "latencyMs": 935,
+      "version": "Nutshell/0.20.1",
+      "source": "nip87"
+    }
+  ],
+  "rejected": []
+}
