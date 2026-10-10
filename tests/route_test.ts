@@ -48,6 +48,18 @@ function post(url: string, body: unknown, header?: string): Request {
 
 const authed = (url: string, body: unknown, header: string) => post(url, body, header);
 
+/**
+ * Seed a rail-SETTLED order, which is now the only way an order is `paid`
+ * (ADR-0008: `store.create()` yields `awaiting_payment`, and the route refuses the
+ * paid edge without a rail verdict — see tests/invoice_test.ts). These tests are
+ * about the facilitator auth surface, not about pricing, so they start from the
+ * state the rail would have produced.
+ */
+function seedPaid(store: OrderStore, id: string): void {
+  store.create(id, {});
+  store.transition(id, "paid", { from: "awaiting_payment" });
+}
+
 /** The console's sign-in: read the challenge, sign it once, reuse the event. */
 async function signIn(challenges: ChallengeStore, handle: Handle): Promise<{ header: string }> {
   const res = await handle(new Request(`${ORIGIN}/auth/challenge`));
@@ -72,8 +84,7 @@ Deno.test("the challenge describes what the server will verify, not a hint", asy
 
 Deno.test("an unauthenticated caller can neither read the queue nor move state", async () => {
   const { store, handle } = app();
-  const created = await handle(post(`${ORIGIN}/orders`, { id: "o-1", payload: { item: "pizza" } }));
-  assertEquals(created.status, 201);
+  seedPaid(store, "o-1");
 
   assertEquals((await handle(new Request(`${ORIGIN}/orders/queue`))).status, 401);
 
@@ -98,8 +109,7 @@ Deno.test("an unauthenticated caller can neither read the queue nor move state",
 Deno.test("the console's signed challenge drives the flow and the receipt persists", async () => {
   const { store, challenges, handle } = app();
   const { header } = await signIn(challenges, handle);
-
-  await handle(post(`${ORIGIN}/orders`, { id: "o-2", payload: { item: "pizza" } }));
+  seedPaid(store, "o-2");
 
   const queue = await handle(new Request(`${ORIGIN}/orders/queue`, { headers: { authorization: header } }));
   assertEquals(queue.status, 200);
@@ -133,7 +143,7 @@ Deno.test("the console's signed challenge drives the flow and the receipt persis
 
 Deno.test("a request-bound credential authorizes exactly one request", async () => {
   const { store, challenges, handle } = app();
-  await handle(post(`${ORIGIN}/orders`, { id: "o-3", payload: {} }));
+  seedPaid(store, "o-3");
 
   const url = `${ORIGIN}/orders/o-3/transition`;
   const nonce = challenges.issue(T0).nonce;
@@ -146,7 +156,7 @@ Deno.test("a request-bound credential authorizes exactly one request", async () 
 
 Deno.test("a credential signed by another key, or for another host, moves nothing", async () => {
   const { store, challenges, handle } = app();
-  await handle(post(`${ORIGIN}/orders`, { id: "o-4", payload: {} }));
+  seedPaid(store, "o-4");
   const url = `${ORIGIN}/orders/o-4/transition`;
 
   const impostor = authHeader(challengeBoundEvent(challenges.issue(T0).nonce, CONSOLE_CHALLENGE_URL, {
@@ -167,7 +177,7 @@ Deno.test("a credential signed by another key, or for another host, moves nothin
 
 Deno.test("a nonce that was never issued is refused at the route", async () => {
   const { store, handle } = app();
-  await handle(post(`${ORIGIN}/orders`, { id: "o-5", payload: {} }));
+  seedPaid(store, "o-5");
   const header = authHeader(challengeBoundEvent(crypto.randomUUID(), CONSOLE_CHALLENGE_URL, {
     created_at: T0,
   }));
@@ -181,7 +191,7 @@ Deno.test("the nonce expires: a stale credential cannot move state", async () =>
   const store = new OrderStore();
   // The clock only moves forward for the authorizer, as it would in production.
   const { handle } = app({ store, challenges, now: () => T0 + 301 });
-  await handle(post(`${ORIGIN}/orders`, { id: "o-6", payload: {} }));
+  seedPaid(store, "o-6");
   const header = authHeader(challengeBoundEvent(challenges.issue(T0).nonce, CONSOLE_CHALLENGE_URL, {
     created_at: T0,
   }));
@@ -193,7 +203,7 @@ Deno.test("the nonce expires: a stale credential cannot move state", async () =>
 Deno.test("CARD CUSTODY: card material in a receipt is 422 and changes nothing (ADR-0013)", async () => {
   const { store, challenges, handle } = app();
   const { header } = await signIn(challenges, handle);
-  await handle(post(`${ORIGIN}/orders`, { id: "o-7", payload: {} }));
+  seedPaid(store, "o-7");
   const url = `${ORIGIN}/orders/o-7/transition`;
   assertEquals((await handle(authed(url, { state: "placing" }, header))).status, 200);
 
@@ -214,7 +224,7 @@ Deno.test("CARD CUSTODY: card material in a receipt is 422 and changes nothing (
 Deno.test("a stale `from` loses the compare-and-set and moves nothing", async () => {
   const { store, challenges, handle } = app();
   const { header } = await signIn(challenges, handle);
-  await handle(post(`${ORIGIN}/orders`, { id: "o-8", payload: {} }));
+  seedPaid(store, "o-8");
   const url = `${ORIGIN}/orders/o-8/transition`;
   assertEquals((await handle(authed(url, { state: "placing" }, header))).status, 200);
 
@@ -225,8 +235,8 @@ Deno.test("a stale `from` loses the compare-and-set and moves nothing", async ()
 });
 
 Deno.test("a credential that is present but invalid is 401 on the public read too", async () => {
-  const { handle } = app();
-  await handle(post(`${ORIGIN}/orders`, { id: "o-9", payload: {} }));
+  const { store, handle } = app();
+  seedPaid(store, "o-9");
 
   const half = await handle(new Request(`${ORIGIN}/orders/o-9`, {
     headers: { authorization: `Nostr ${btoa("not-an-event")}` },
@@ -239,7 +249,7 @@ Deno.test("a credential that is present but invalid is 401 on the public read to
 
 Deno.test("an unusable or missing FACILITATOR_NPUB closes the facilitator routes", async () => {
   const { store, handle } = app({ facilitatorPubkey: null });
-  await handle(post(`${ORIGIN}/orders`, { id: "o-10", payload: {} }));
+  seedPaid(store, "o-10");
   const header = authHeader(challengeBoundEvent(crypto.randomUUID(), CONSOLE_CHALLENGE_URL, {
     created_at: T0,
   }));
@@ -261,12 +271,7 @@ Deno.test("over real HTTP: unauthenticated is 401 and a signed call persists the
   const headers = { "content-type": "application/json" };
 
   try {
-    const created = await fetch(`${base}/orders`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ id: "o-live", payload: { item: "pizza" } }),
-    });
-    assertEquals(created.status, 201);
+    seedPaid(store, "o-live");
 
     const denied = await fetch(`${base}/orders/o-live/transition`, {
       method: "POST",
