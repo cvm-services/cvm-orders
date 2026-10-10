@@ -1,0 +1,1764 @@
+{
+  "_provenance": {
+    "what": "Server-side venue catalog used to recompute every order price (ADR-0008: never trust a client amount).",
+    "source": "https://cvm-pwa.orangesync.tech/menu.json (the file the shipped PWA at /order/ fetches as ../menu.json)",
+    "captured_at": "2026-10-10",
+    "source_sha256": "0a04394395b338e5e483d29a27733729c4900d25c7cb15abb3d3bf3a49852cd7",
+    "how": "curl -sS https://cvm-pwa.orangesync.tech/menu.json | jq '{venues: [.venues[] | {venue_slug, name, items: [.items[] | {sku, name, prices_by_order_method, available}]}]}'",
+    "note": "That file is itself a live capture of each venue CVM's `menu` tool result (see its own _provenance). Regenerate this copy when the upstream menu changes; do not hand-edit prices."
+  },
+  "sats_per_eur": 1000,
+  "_rate_note": "1 EUR = 1000 sats, matching the shipped PWA's own display rate (app.js: `sats = n => Math.round(n * 1000)`). Override with SATS_PER_EUR in the service env.",
+  "option_surcharges_sats": {
+    "Bacon": 150,
+    "Jalapeños": 90,
+    "Extra cheese": 120
+  },
+  "_option_note": "Mirrored from the shipped client (app.js: Bacon .15, Jalapeños .09, Extra cheese .12 EUR). The venue CVMs' option_group_ids are not priced in the captured menu, so a client-sent option token that is not in this table is recorded but charged nothing; see REPORT.md 'what this does NOT prove'.",
+  "venues": [
+    {
+      "venue_slug": "doppelt-kaese-berlin",
+      "name": "Doppelt Käse Laubacher Straße",
+      "items": [
+        {
+          "sku": "331227",
+          "name": "Cheeseburger",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 9.5,
+            "pickup": 8.9,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331233",
+          "name": "Curly Fries",
+          "prices_by_order_method": {
+            "delivery": 4.9,
+            "dine_in": 4.9,
+            "pickup": 4.5,
+            "room_service": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "331230",
+          "name": "Der Doppelt Käse-Burger",
+          "prices_by_order_method": {
+            "delivery": 11.5,
+            "dine_in": 11.5,
+            "pickup": 10.9,
+            "room_service": 11.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331235",
+          "name": "Parmesan Pommes frites",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 7.5,
+            "pickup": 6.8,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331243",
+          "name": "Beyond Meat-Burger",
+          "prices_by_order_method": {
+            "delivery": 10.2,
+            "dine_in": 10.2,
+            "pickup": 9.9,
+            "room_service": 10.2
+          },
+          "available": true
+        },
+        {
+          "sku": "331246",
+          "name": "Beyond Chili-Cheeseburger",
+          "prices_by_order_method": {
+            "delivery": 10.6,
+            "dine_in": 10.6,
+            "pickup": 10.2,
+            "room_service": 10.6
+          },
+          "available": true
+        },
+        {
+          "sku": "331234",
+          "name": "Süßkartoffel-Pommes",
+          "prices_by_order_method": {
+            "delivery": 5.2,
+            "dine_in": 5.2,
+            "pickup": 4.9,
+            "room_service": 5.2
+          },
+          "available": true
+        },
+        {
+          "sku": "331267",
+          "name": "Sweet Dreams",
+          "prices_by_order_method": {
+            "delivery": 8.0,
+            "dine_in": 8.0,
+            "pickup": 7.2,
+            "room_service": 8.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331237",
+          "name": "Chili Cheese Pommes frites",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 7.5,
+            "pickup": 6.8,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "334624",
+          "name": "Chicken Fingers 6 Stück",
+          "prices_by_order_method": {
+            "delivery": 6.9,
+            "dine_in": 6.9,
+            "pickup": 6.5,
+            "room_service": 6.9
+          },
+          "available": false
+        },
+        {
+          "sku": "331291",
+          "name": "Potato Tots",
+          "prices_by_order_method": {
+            "delivery": 5.6,
+            "dine_in": 5.6,
+            "pickup": 5.5,
+            "room_service": 5.6
+          },
+          "available": false
+        },
+        {
+          "sku": "331226",
+          "name": "Hamburger",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 8.5,
+            "pickup": 7.9,
+            "room_service": 8.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331228",
+          "name": "BBQ Burger",
+          "prices_by_order_method": {
+            "delivery": 9.9,
+            "dine_in": 9.9,
+            "pickup": 9.5,
+            "room_service": 9.9
+          },
+          "available": true
+        },
+        {
+          "sku": "331229",
+          "name": "Chili-Cheeseburger",
+          "prices_by_order_method": {
+            "delivery": 10.9,
+            "dine_in": 10.9,
+            "pickup": 9.5,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "331259",
+          "name": "Habanero Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 10.5,
+            "pickup": 9.9,
+            "room_service": 10.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331260",
+          "name": "Gorgonzola-Preiselbeere-Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 10.5,
+            "pickup": 9.9,
+            "room_service": 10.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331261",
+          "name": "Classic Burger",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 8.9,
+            "pickup": 8.5,
+            "room_service": 8.9
+          },
+          "available": true
+        },
+        {
+          "sku": "331262",
+          "name": "Pilz-Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 10.5,
+            "pickup": 9.9,
+            "room_service": 10.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331231",
+          "name": "Chicken Burger",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 9.5,
+            "pickup": 8.5,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331232",
+          "name": "Pommes frites",
+          "prices_by_order_method": {
+            "delivery": 4.2,
+            "dine_in": 4.2,
+            "pickup": 3.9,
+            "room_service": 4.2
+          },
+          "available": true
+        },
+        {
+          "sku": "331236",
+          "name": "Guacamole Pommes frites",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 7.5,
+            "pickup": 6.8,
+            "room_service": 7.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331292",
+          "name": "Loaded Potato Tots",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 8.5,
+            "pickup": 7.7,
+            "room_service": 8.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331238",
+          "name": "Chicken Wings 6 Stück",
+          "prices_by_order_method": {
+            "delivery": 6.5,
+            "dine_in": 6.5,
+            "pickup": 6.0,
+            "room_service": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "334622",
+          "name": "Chicken Wings 9 Stück",
+          "prices_by_order_method": {
+            "delivery": 9.0,
+            "dine_in": 9.0,
+            "pickup": 8.5,
+            "room_service": 9.0
+          },
+          "available": true
+        },
+        {
+          "sku": "334623",
+          "name": "Chicken Wings 12 Stück",
+          "prices_by_order_method": {
+            "delivery": 11.0,
+            "dine_in": 11.0,
+            "pickup": 10.5,
+            "room_service": 11.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331239",
+          "name": "Chicken Fingers 9 Stück",
+          "prices_by_order_method": {
+            "delivery": 9.9,
+            "dine_in": 9.9,
+            "pickup": 9.0,
+            "room_service": 9.9
+          },
+          "available": false
+        },
+        {
+          "sku": "334625",
+          "name": "Chicken Fingers 12 Stück",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 11.9,
+            "pickup": 11.0,
+            "room_service": 11.9
+          },
+          "available": false
+        },
+        {
+          "sku": "331240",
+          "name": "Onion Rings 6 Stück",
+          "prices_by_order_method": {
+            "delivery": 7.0,
+            "dine_in": 7.0,
+            "pickup": 6.3,
+            "room_service": 7.0
+          },
+          "available": true
+        },
+        {
+          "sku": "334626",
+          "name": "Onion Rings 12 Stück",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 9.5,
+            "pickup": 9.0,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "334627",
+          "name": "Onion Rings 18 Stück",
+          "prices_by_order_method": {
+            "delivery": 13.0,
+            "dine_in": 13.0,
+            "pickup": 12.5,
+            "room_service": 13.0
+          },
+          "available": true
+        },
+        {
+          "sku": "369053",
+          "name": "Bunter Krautsalat",
+          "prices_by_order_method": {
+            "delivery": 3.5,
+            "dine_in": 3.5,
+            "pickup": 3.2,
+            "room_service": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331241",
+          "name": "Caesar-Salat",
+          "prices_by_order_method": {
+            "delivery": 9.0,
+            "dine_in": 9.0,
+            "pickup": 8.1,
+            "room_service": 9.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331244",
+          "name": "Ratatouille Burger",
+          "prices_by_order_method": {
+            "delivery": 11.5,
+            "dine_in": 11.5,
+            "pickup": 11.5,
+            "room_service": 11.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331245",
+          "name": "Beyond BBQ-Burger",
+          "prices_by_order_method": {
+            "delivery": 10.2,
+            "dine_in": 10.2,
+            "pickup": 9.9,
+            "room_service": 10.2
+          },
+          "available": true
+        },
+        {
+          "sku": "331263",
+          "name": "Beyond Habanero Burger",
+          "prices_by_order_method": {
+            "delivery": 11.6,
+            "dine_in": 11.6,
+            "pickup": 11.5,
+            "room_service": 11.6
+          },
+          "available": true
+        },
+        {
+          "sku": "331264",
+          "name": "Beyond Preiselbeere-Burger",
+          "prices_by_order_method": {
+            "delivery": 11.2,
+            "dine_in": 11.2,
+            "pickup": 11.2,
+            "room_service": 11.2
+          },
+          "available": true
+        },
+        {
+          "sku": "331265",
+          "name": "Beyond Klassik Burger",
+          "prices_by_order_method": {
+            "delivery": 10.6,
+            "dine_in": 10.6,
+            "pickup": 9.9,
+            "room_service": 10.6
+          },
+          "available": true
+        },
+        {
+          "sku": "331266",
+          "name": "Beyond Pilz-Burger",
+          "prices_by_order_method": {
+            "delivery": 11.6,
+            "dine_in": 11.6,
+            "pickup": 11.5,
+            "room_service": 11.6
+          },
+          "available": false
+        },
+        {
+          "sku": "331248",
+          "name": "Burgersoße",
+          "prices_by_order_method": {
+            "delivery": 1.0,
+            "dine_in": 1.0,
+            "pickup": 0.9,
+            "room_service": 1.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331249",
+          "name": "Getrüffelte Haussoße",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.4,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331250",
+          "name": "Ketchup",
+          "prices_by_order_method": {
+            "delivery": 0.5,
+            "dine_in": 0.5,
+            "pickup": 0.5,
+            "room_service": 0.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331251",
+          "name": "Mayonnaise",
+          "prices_by_order_method": {
+            "delivery": 0.5,
+            "dine_in": 0.5,
+            "pickup": 0.5,
+            "room_service": 0.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331252",
+          "name": "Vegane Mayonnaise",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.4,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331253",
+          "name": "Barbecuesoße",
+          "prices_by_order_method": {
+            "delivery": 1.0,
+            "dine_in": 1.0,
+            "pickup": 0.9,
+            "room_service": 1.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331254",
+          "name": "Käsesoße",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.7,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331255",
+          "name": "Sour Cream",
+          "prices_by_order_method": {
+            "delivery": 1.0,
+            "dine_in": 1.0,
+            "pickup": 0.9,
+            "room_service": 1.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331256",
+          "name": "Süß-Sauer-Soße",
+          "prices_by_order_method": {
+            "delivery": 1.0,
+            "dine_in": 1.0,
+            "pickup": 0.9,
+            "room_service": 1.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331257",
+          "name": "Trüffelmayonnaise",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.4,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331258",
+          "name": "Guacamole",
+          "prices_by_order_method": {
+            "delivery": 3.5,
+            "dine_in": 3.5,
+            "pickup": 3.2,
+            "room_service": 3.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331268",
+          "name": "Aioli-Soße",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.4,
+            "room_service": 1.5
+          },
+          "available": false
+        },
+        {
+          "sku": "331270",
+          "name": "Club Mate 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331271",
+          "name": "Coca-Cola® 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331272",
+          "name": "Coca-Cola® 1,0 l",
+          "prices_by_order_method": {
+            "delivery": 3.95,
+            "dine_in": 3.95,
+            "pickup": 3.6,
+            "room_service": 3.95
+          },
+          "available": false
+        },
+        {
+          "sku": "331273",
+          "name": "Coca-Cola® Zero 1,0 l",
+          "prices_by_order_method": {
+            "delivery": 3.95,
+            "dine_in": 3.95,
+            "pickup": 3.6,
+            "room_service": 3.95
+          },
+          "available": true
+        },
+        {
+          "sku": "331274",
+          "name": "Coca-Cola® Zero 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331275",
+          "name": "Fanta 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331276",
+          "name": "Fanta 1,0 l",
+          "prices_by_order_method": {
+            "delivery": 3.95,
+            "dine_in": 3.95,
+            "pickup": 3.6,
+            "room_service": 3.95
+          },
+          "available": true
+        },
+        {
+          "sku": "331278",
+          "name": "Mezzo Mix 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "331279",
+          "name": "Mezzo Mix 1,0 l",
+          "prices_by_order_method": {
+            "delivery": 3.95,
+            "dine_in": 3.95,
+            "pickup": 3.6,
+            "room_service": 3.95
+          },
+          "available": true
+        },
+        {
+          "sku": "331281",
+          "name": "Vio Schorle Apfel 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": false
+        },
+        {
+          "sku": "331282",
+          "name": "Sprite 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.9,
+            "room_service": 3.0
+          },
+          "available": false
+        },
+        {
+          "sku": "331283",
+          "name": "Sprite 1,0 l",
+          "prices_by_order_method": {
+            "delivery": 3.95,
+            "dine_in": 3.95,
+            "pickup": 3.6,
+            "room_service": 3.95
+          },
+          "available": true
+        },
+        {
+          "sku": "331284",
+          "name": "Vio Still 0,5 l",
+          "prices_by_order_method": {
+            "delivery": 2.5,
+            "dine_in": 2.5,
+            "pickup": 2.3,
+            "room_service": 2.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331285",
+          "name": "Vio Spritzig 0,5 l",
+          "prices_by_order_method": {
+            "delivery": 2.5,
+            "dine_in": 2.5,
+            "pickup": 2.3,
+            "room_service": 2.5
+          },
+          "available": true
+        },
+        {
+          "sku": "331289",
+          "name": "Warsteiner Alkoholfrei 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.58,
+            "dine_in": 3.58,
+            "pickup": 3.3,
+            "room_service": 3.58
+          },
+          "available": true
+        },
+        {
+          "sku": "331290",
+          "name": "Rixdorfer Fassbrause 0,33 l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.7,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "369054",
+          "name": "Ice Tea Peach 0.33l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.7,
+            "room_service": 3.0
+          },
+          "available": true
+        },
+        {
+          "sku": "369055",
+          "name": "Ice Tea Lemon Sparkling 0.33l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.7,
+            "room_service": 3.0
+          },
+          "available": false
+        },
+        {
+          "sku": "369056",
+          "name": "Ice Tea Pineapple Mango 0,33l",
+          "prices_by_order_method": {
+            "delivery": 3.0,
+            "dine_in": 3.0,
+            "pickup": 2.7,
+            "room_service": 3.0
+          },
+          "available": false
+        },
+        {
+          "sku": "550614",
+          "name": "1. Classic Bun",
+          "prices_by_order_method": {
+            "delivery": 6.9,
+            "dine_in": 6.9,
+            "pickup": 6.3,
+            "room_service": 6.9
+          },
+          "available": false
+        },
+        {
+          "sku": "550615",
+          "name": "2. Avocado Bun",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 9.5,
+            "pickup": 8.6,
+            "room_service": 9.5
+          },
+          "available": false
+        },
+        {
+          "sku": "550616",
+          "name": "3. Parmesan Trüffel Bun",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 8.9,
+            "pickup": 8.1,
+            "room_service": 8.9
+          },
+          "available": false
+        },
+        {
+          "sku": "550617",
+          "name": "4. Pilz Bun",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 8.9,
+            "pickup": 8.1,
+            "room_service": 8.9
+          },
+          "available": false
+        },
+        {
+          "sku": "550618",
+          "name": "5. Preiselbeere Bun",
+          "prices_by_order_method": {
+            "delivery": 7.9,
+            "dine_in": 7.9,
+            "pickup": 7.2,
+            "room_service": 7.9
+          },
+          "available": false
+        },
+        {
+          "sku": "550619",
+          "name": "6. Chicken Bun",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 9.5,
+            "pickup": 8.6,
+            "room_service": 9.5
+          },
+          "available": false
+        },
+        {
+          "sku": "550620",
+          "name": "7. Pastrami Bun",
+          "prices_by_order_method": {
+            "delivery": 9.9,
+            "dine_in": 9.9,
+            "pickup": 9.0,
+            "room_service": 9.9
+          },
+          "available": false
+        }
+      ]
+    },
+    {
+      "venue_slug": "pizza-e-pasta-ruedesheimerplatz",
+      "name": "Pizza e Pasta",
+      "items": [
+        {
+          "sku": "1",
+          "name": "Pizza Funghi Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "10",
+          "name": "Pizza Capperi Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "100",
+          "name": "Pizza Margherita",
+          "prices_by_order_method": {
+            "pickup": 9.9
+          },
+          "available": true
+        },
+        {
+          "sku": "101",
+          "name": "Pizza Salami",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "102",
+          "name": "Pizza Prosciutto",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "103",
+          "name": "Pizza Funghi",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "104",
+          "name": "Pizza Bolognese",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "105",
+          "name": "Pizza Hawaii",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "106",
+          "name": "Pizza Tonno",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "107",
+          "name": "Pizza Gorgonzola",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "109",
+          "name": "Pizza Mista",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "11",
+          "name": "Caprese di Bufala",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "110",
+          "name": "Pizza Picante (scharf)",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "110",
+          "name": "Pizza Sardelle",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "111",
+          "name": "Pizza Verdura",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "112",
+          "name": "Pizza Peperoni",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "113",
+          "name": "Pizza Spinaci",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "114",
+          "name": "Pizza Parma",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "115",
+          "name": "Pizza Scampi",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "116",
+          "name": "Pizza Romana",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "117",
+          "name": "Pizza Palermo",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "118",
+          "name": "Pizza Primavera",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "119",
+          "name": "Pizza Diavolo (scharf)",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "120",
+          "name": "Pizza Formaggi",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "121",
+          "name": "Pizza Frutti di Mare",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "122",
+          "name": "Pizza Focaccia",
+          "prices_by_order_method": {
+            "pickup": 8.1
+          },
+          "available": true
+        },
+        {
+          "sku": "123",
+          "name": "Pizza Calzone",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "124",
+          "name": "Pizza Bacon",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "125",
+          "name": "Pizza Caprese",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "126",
+          "name": "Pizza Calabrese",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "127",
+          "name": "Pizza Broccoli",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "128",
+          "name": "Pizza Dolomiti",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "129",
+          "name": "Pizza Capricciosa",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "13",
+          "name": "Gemischter Salat",
+          "prices_by_order_method": {
+            "pickup": 9.0
+          },
+          "available": true
+        },
+        {
+          "sku": "130",
+          "name": "Pizza Büffelmozzarella",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "131",
+          "name": "Pizza Quattro Stagione",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "132",
+          "name": "Pizza Sucuk",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "133",
+          "name": "Pizza Bresaola",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "134",
+          "name": "Pizza Salmone (32cm)",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "135",
+          "name": "Pizza Tartufo (32cm)",
+          "prices_by_order_method": {
+            "pickup": 16.65
+          },
+          "available": true
+        },
+        {
+          "sku": "14",
+          "name": "Salat Tonno",
+          "prices_by_order_method": {
+            "pickup": 10.8
+          },
+          "available": true
+        },
+        {
+          "sku": "15",
+          "name": "Salat Formaggi",
+          "prices_by_order_method": {
+            "pickup": 10.8
+          },
+          "available": true
+        },
+        {
+          "sku": "16",
+          "name": "Salat Pollo",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "17",
+          "name": "Insalata di Scampi",
+          "prices_by_order_method": {
+            "pickup": 12.6
+          },
+          "available": true
+        },
+        {
+          "sku": "18",
+          "name": "Insalata di Rucola",
+          "prices_by_order_method": {
+            "pickup": 9.0
+          },
+          "available": true
+        },
+        {
+          "sku": "19",
+          "name": "Tiramisu (hausgemacht)",
+          "prices_by_order_method": {
+            "pickup": 6.3
+          },
+          "available": true
+        },
+        {
+          "sku": "2",
+          "name": "Pizza Verdura Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "20",
+          "name": "2 Gefüllte Schokorollen",
+          "prices_by_order_method": {
+            "pickup": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "3",
+          "name": "Pizza Peperoni Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "30",
+          "name": "Coca Cola 0,2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "30a",
+          "name": "Fanta 0,2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "30b",
+          "name": "Sprite 0,2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "31",
+          "name": "Coca Cola Light 0,2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "32",
+          "name": "Coca Cola Zero 0,2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "33",
+          "name": "Mezzo Mix 0.2l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "34",
+          "name": "Apfelschorle 0,33l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "35",
+          "name": "Eistee 0,33l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "36",
+          "name": "Bionade Ingwer-Orange 0,33l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "36",
+          "name": "Vitamalz 0.33l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "36a",
+          "name": "Bionade Holunder 0,33l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "36b",
+          "name": "Bionade Kräuter 0.33l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "37",
+          "name": "Mineralwasser still 0.25l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "37a",
+          "name": "Mineralwasser sprudel 0.25l",
+          "prices_by_order_method": {
+            "pickup": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "38",
+          "name": "Mineralwasser still 0.75l",
+          "prices_by_order_method": {
+            "pickup": 5.4
+          },
+          "available": true
+        },
+        {
+          "sku": "38a",
+          "name": "Mineralwasser sprudel 0.75l",
+          "prices_by_order_method": {
+            "pickup": 5.4
+          },
+          "available": true
+        },
+        {
+          "sku": "39",
+          "name": "Bier alkoholfrei 0.5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "4",
+          "name": "Pizza Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "41",
+          "name": "Heiniken 0,5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "42",
+          "name": "Veltins Bier 0.5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "43",
+          "name": "König Ludwig Weißbier 0.5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "44",
+          "name": "König Ludwig Dunkel 0.5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "44",
+          "name": "König Ludwig Kristal 0.5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "46",
+          "name": "Natur Radler (Gösser) 0,5l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "47",
+          "name": "Desperados Tequila 0,33l",
+          "prices_by_order_method": {
+            "pickup": 3.6
+          },
+          "available": true
+        },
+        {
+          "sku": "5",
+          "name": "Pizza Palermo Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "51",
+          "name": "Nero Davola Sicilia (trocken) Rotwein 0.2l",
+          "prices_by_order_method": {
+            "pickup": 5.4
+          },
+          "available": true
+        },
+        {
+          "sku": "52",
+          "name": "Riesling (Trocken) Weißwein 0.2l",
+          "prices_by_order_method": {
+            "pickup": 5.4
+          },
+          "available": true
+        },
+        {
+          "sku": "53",
+          "name": "Pinot Grigio 0.2l",
+          "prices_by_order_method": {
+            "pickup": 5.4
+          },
+          "available": true
+        },
+        {
+          "sku": "54",
+          "name": "Aperolspritz 0.5l",
+          "prices_by_order_method": {
+            "pickup": 7.2
+          },
+          "available": true
+        },
+        {
+          "sku": "6",
+          "name": "Pizza Primavera Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "62",
+          "name": "Riesling 1l",
+          "prices_by_order_method": {
+            "pickup": 16.2
+          },
+          "available": true
+        },
+        {
+          "sku": "63",
+          "name": "Pinot Grigio 0.75l",
+          "prices_by_order_method": {
+            "pickup": 10.8
+          },
+          "available": true
+        },
+        {
+          "sku": "64",
+          "name": "Riesling Sekt 0.75l",
+          "prices_by_order_method": {
+            "pickup": 15.3
+          },
+          "available": true
+        },
+        {
+          "sku": "65",
+          "name": "Weisser Burgunder 0.75l",
+          "prices_by_order_method": {
+            "pickup": 15.3
+          },
+          "available": true
+        },
+        {
+          "sku": "66",
+          "name": "Spätburgunder (Rose) 0.75l",
+          "prices_by_order_method": {
+            "pickup": 15.3
+          },
+          "available": true
+        },
+        {
+          "sku": "67",
+          "name": "Nero Davola",
+          "prices_by_order_method": {
+            "pickup": 10.8
+          },
+          "available": true
+        },
+        {
+          "sku": "69",
+          "name": "Spaghetti Tartufo",
+          "prices_by_order_method": {
+            "pickup": 16.65
+          },
+          "available": true
+        },
+        {
+          "sku": "7",
+          "name": "Pizza Broccoli Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "70",
+          "name": "Spaghetti Aglio Olio",
+          "prices_by_order_method": {
+            "pickup": 9.9
+          },
+          "available": true
+        },
+        {
+          "sku": "71",
+          "name": "Spaghetti Pollo",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "72",
+          "name": "Spaghetti Amore",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "73",
+          "name": "Spaghetti Ragout",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "74",
+          "name": "Spaghetti Carbonara",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "75",
+          "name": "Spaghetti al Pomodoro",
+          "prices_by_order_method": {
+            "pickup": 9.9
+          },
+          "available": true
+        },
+        {
+          "sku": "76",
+          "name": "Spaghetti Frutti di Mare",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "77",
+          "name": "Penne Arrabiatta",
+          "prices_by_order_method": {
+            "pickup": 10.8
+          },
+          "available": true
+        },
+        {
+          "sku": "78",
+          "name": "Penne Calabrese",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "79",
+          "name": "Penne Mozzarella",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "8",
+          "name": "Pizza Spinaci Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "80",
+          "name": "Penne Gorgonzola",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "81",
+          "name": "Penne Bolognese",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "82",
+          "name": "Penne Contadino",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "83",
+          "name": "Penne Siciliana",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "84",
+          "name": "Penne Broccoli",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "85",
+          "name": "Tagliatelle Scampi",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "86",
+          "name": "Tagliatelle Salmone",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "87",
+          "name": "Gnocchi al Gorgonzola",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "88",
+          "name": "Tortellini Panna",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "89",
+          "name": "Tortellini Spinaci",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "9",
+          "name": "Pizza Cipolla Vegan",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        },
+        {
+          "sku": "90",
+          "name": "Penne Pollo al Broccoli",
+          "prices_by_order_method": {
+            "pickup": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "91",
+          "name": "Penne Funghi",
+          "prices_by_order_method": {
+            "pickup": 11.7
+          },
+          "available": true
+        }
+      ]
+    }
+  ]
+}

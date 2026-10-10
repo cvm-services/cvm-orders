@@ -12,11 +12,23 @@ defaultDenoTest();
 
 function defaultDenoTest() {/* keeps this file discoverable by deno test */}
 
-Deno.test("creates paid orders and advances the legal lifecycle", () => {
+/**
+ * The store is no longer able to mint a paid order: `create()` produces
+ * `awaiting_payment` and only the rail-verified edge reaches `paid` (ADR-0008).
+ * Tests that want the facilitator's half of the lifecycle settle the order
+ * first, which is exactly the edge the route gates (tests/invoice_test.ts).
+ */
+function paid(store: OrderStore, id: string, payload: unknown = {}): void {
+  store.create(id, payload);
+  store.transition(id, "paid", { from: "awaiting_payment" });
+}
+
+Deno.test("creates awaiting_payment orders and advances the legal lifecycle", () => {
   const store = new OrderStore();
   const order = store.create("o-1", { item: "pizza" });
-  assertEquals(order.state, "paid");
-  for (const state of ["placing", "placed", "ready"] as OrderState[]) {
+  assertEquals(order.state, "awaiting_payment");
+  assertEquals(store.queue(), [], "an unpaid order is not paid work");
+  for (const state of ["paid", "placing", "placed", "ready"] as OrderState[]) {
     assertEquals(store.transition("o-1", state).state, state);
   }
 });
@@ -25,14 +37,16 @@ Deno.test("rejects illegal transitions without mutating state", () => {
   const store = new OrderStore();
   store.create("o-2");
   assertThrows(() => store.transition("o-2", "ready"), InvalidTransitionError);
-  assertEquals(store.get("o-2")?.state, "paid");
+  assertThrows(() => store.transition("o-2", "placing"), InvalidTransitionError, undefined, "unpaid is not placing");
+  assertEquals(store.get("o-2")?.state, "awaiting_payment");
 });
 
 Deno.test("allows refund only before placement and lists paid queue", () => {
   const store = new OrderStore();
   store.create("o-3");
+  store.transition("o-3", "paid", { from: "awaiting_payment" });
   assertEquals(store.transition("o-3", "refunded").state, "refunded");
-  store.create("o-4");
+  paid(store, "o-4");
   assertEquals(store.queue().map((o) => o.id), ["o-4"]);
 });
 
@@ -47,7 +61,7 @@ const receipt = () => ({
 
 Deno.test("persists the receipt in the same step as the state change", () => {
   const store = new OrderStore();
-  store.create("o-r1", { item: "pizza" });
+  paid(store, "o-r1", { item: "pizza" });
   assertEquals(store.get("o-r1")?.receipt, undefined, "no receipt before the venue is used");
 
   store.transition("o-r1", "placing");
@@ -62,7 +76,7 @@ Deno.test("persists the receipt in the same step as the state change", () => {
 
 Deno.test("a stored receipt is a copy: a reader cannot rewrite the record", () => {
   const store = new OrderStore();
-  store.create("o-r2");
+  paid(store, "o-r2");
   store.transition("o-r2", "placing");
   const placed = store.transition("o-r2", "placed", { receipt: receipt() });
 
@@ -74,7 +88,7 @@ Deno.test("a stored receipt is a copy: a reader cannot rewrite the record", () =
 
 Deno.test("a receipt is the only place the venue reference is required", () => {
   const store = new OrderStore();
-  store.create("o-r3");
+  paid(store, "o-r3");
   store.transition("o-r3", "placing");
 
   const cases: Array<[string, unknown, new (detail: string) => Error]> = [
@@ -110,7 +124,7 @@ Deno.test("a receipt is the only place the venue reference is required", () => {
 
 Deno.test("a lost compare-and-set writes neither the state nor the receipt", () => {
   const store = new OrderStore();
-  store.create("o-r4");
+  paid(store, "o-r4");
 
   assertThrows(
     () => store.transition("o-r4", "placed", { from: "placing", receipt: receipt() }),
@@ -132,8 +146,8 @@ Deno.test("a lost compare-and-set writes neither the state nor the receipt", () 
 
 Deno.test("a receipt never changes who is in the queue", () => {
   const store = new OrderStore();
-  store.create("o-q1");
-  store.create("o-q2");
+  paid(store, "o-q1");
+  paid(store, "o-q2");
   store.transition("o-q2", "placing", { receipt: receipt() });
 
   assertEquals(store.queue().map((o) => o.id), ["o-q1"], "queue filtering is on state alone");
