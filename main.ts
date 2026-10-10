@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { type OrderState, OrderStore, type Receipt } from "./src/store.ts";
+import { serveOptions } from "./src/serve_options.ts";
 import { assertNoCardMaterial, CardMaterialRefused } from "./src/hygiene.ts";
 import {
   CHALLENGE_PATH,
@@ -180,6 +181,6 @@ export const route = createRoute({
   allowChallengeCredential: Deno.env.get("NIP98_STRICT") !== "1",
 });
 
-export { CardMaterialRefused };
+export { CardMaterialRefused, serveOptions };
 
-if (import.meta.main) serve(route, { port: Number(Deno.env.get("PORT") ?? 8000) });
+if (import.meta.main) serve(route, serveOptions(Deno.env));

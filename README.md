@@ -87,3 +87,9 @@ Run behind the existing reverse proxy as a systemd service, bind localhost, and 
 `FACILITATOR_NPUB` in an environment file (`cvm-registry` `deploy/orders-setup.sh`). Persist the
 store behind the next database adapter before production; this in-memory implementation is for the
 working demo only — a restart empties the queue, and receipts live no longer than the process.
+
+Live deployment (2026-10-10): `/opt/tollgate/cvm-orders` on the PWA host, unit `cvm-orders.service`,
+`EnvironmentFile=/etc/cvm-orders/config.env` (`FACILITATOR_NPUB`, `PORT=8788`). Caddy on the same
+host serves `cvm-pwa.orangesync.tech` and strips `/api/*` onto `127.0.0.1:8788`, so both PWAs call
+`/api/...` on their own origin. `BIND_ADDR` defaults to `127.0.0.1`; setting it to `0.0.0.0` exposes
+an unauthenticated store to the network.
