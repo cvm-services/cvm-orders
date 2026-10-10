@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { type OrderState, OrderStore } from "./src/store.ts";
+import { serveOptions } from "./src/serve_options.ts";
 const store = new OrderStore();
 const facilitatorNpub = Deno.env.get("FACILITATOR_NPUB") ?? null;
 function json(body: unknown, status = 200) {
@@ -60,5 +61,5 @@ async function route(req: Request): Promise<Response> {
   }
   return json({ error: "not found" }, 404);
 }
-if (import.meta.main) serve(route, { port: Number(Deno.env.get("PORT") ?? 8000) });
-export { route };
+if (import.meta.main) serve(route, serveOptions(Deno.env));
+export { route, serveOptions };
