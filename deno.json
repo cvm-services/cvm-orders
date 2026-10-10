@@ -1,7 +1,10 @@
 {
   "tasks": {
-    "test": "deno test --coverage=coverage tests/",
+    "test": "deno test --coverage=coverage --allow-read --allow-env --allow-net tests/",
     "coverage": "deno coverage coverage --lcov --include='src/' > coverage.lcov"
+  },
+  "imports": {
+    "nostr-tools": "npm:nostr-tools@2"
   },
   "fmt": { "useTabs": false, "lineWidth": 100 }
 }
