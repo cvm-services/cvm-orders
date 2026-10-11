@@ -49,10 +49,25 @@ Sats are final **before** any fiat spend. The gate is structural, not advisory:
   order and can never pay it.
 * `POST /orders/:id/transition` **refuses** `awaiting_payment -> paid` unless the settlement is
   rail-verified, so the public API cannot be used to post an order into `paid`.
+* **The service reconciles its own orders** (`src/sweeper.ts`). A sweep starts with the process and
+  asks the rail about every `awaiting_payment` order that has an invoice, every
+  `ORDER_SWEEP_INTERVAL_MS` (default `30000`; `0` disables it, loudly in the log; a garbage value
+  falls back to the default rather than disabling the sweep). `settled` moves the order to `paid`,
+  `expired` to `expired` (terminal), and a rail that is unreachable changes nothing and is logged
+  once per tick, not once per order.
+
+  Before this, the **only** thing that ever asked the mint "was this invoice paid?" was the
+  customer's own browser polling `GET /orders/:id` — close the tab and a paid invoice sat in
+  `awaiting_payment` forever. Now a paid invoice settles with the tab gone; the cost is that
+  settlement latency is bounded by the interval (the client's poll still usually wins the race), and
+  the sweep reads the same store the route does, so a multi-replica deploy would run one sweep per
+  replica (the compare-and-set is atomic only within a process).
 
 The rail is `CASHU_MINT_URL` (Cashu NUT-04 over BOLT11). Tests inject an in-memory fake and need no
 network. Which mint to point at is [its own document](docs/mint-discovery.md): candidates are probed
 for NUT-04/05/07 capability rather than trusted.
+The route and the sweep resolve that rail through one lazy per-process `createRailResolver()`, so
+they always observe the same rail.
 
 ## Authentication (NIP-98, verified here)
 
