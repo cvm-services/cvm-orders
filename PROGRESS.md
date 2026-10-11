@@ -72,13 +72,44 @@ empties the queue by design". Now SQLite via `node:sqlite` (WAL, `busy_timeout`)
 - [x] `create()` refuses an order without an id (the `t_5198c7da` contract bug: `body.id` was
       `undefined`).
 
+## The rebase's composition hole — fixed on this branch (review of worker-base/t_89dcb160)
+
+Merging PR #8 (the sweep) onto PR #7 (durable settlement) produced two halves of ONE feature that did
+not compose:
+
+- the poll (`GET /orders/:id`) settles through `claimSettlement({quoteId})` — one conditional UPDATE
+  plus a single-use `settlement_proofs` row;
+- the SWEEP (PR #8) settled through a bare `store.transition(id, "paid")`.
+
+So a sweep-settled order reached `paid` with `settlement_proofs` EMPTY: the payment request was never
+marked spent, and the SAME quote could settle a second order through the poll. Measured, not
+theorised — with only `src/sweeper.ts` reverted (everything else on this branch in place):
+`report.paid === 1` for the second order and `proofSpentBy(quote) === undefined`. One payment, two
+paid orders.
+
+- [x] `SweeperStore` declares `claimSettlement`, not `transition`; every rail verdict the sweep
+      applies goes through the durable claim. `won` is the only outcome that changes anything; `lost`
+      is a concurrent poll (that IS the exactly-once mechanism) and counts as `unchanged`;
+      `proof_spent` is NOT a race — the invoice already paid a DIFFERENT order — so it gets
+      `SweepReport.reused` plus a warning line instead of being folded into "nothing to do".
+- [x] expiry uses `claimSettlement(id, claim, "expired")`: the same compare-and-set, no proof row (an
+      expired invoice was never paid, so there is nothing to spend).
+- [x] `ensureStoreDir()` — now that the durable path is the ONLY path, a fresh checkout died on
+      `unable to open database file` because `data/` does not exist. A durable-by-default service
+      makes its own directory; a real error (permissions) still throws.
+- [x] the sweep test counted *transitions*. After this change a losing racer never calls `transition`
+      at all — it returns `lost` and writes nothing — so "exactly once" is measured on the claim,
+      where the property lives. Two new tests pin the barrier from both sides.
+
 ## Evidence
 - RED probe (`tests/helpers/durable_probe.ts`) against the pre-fix store:
   `PERSIST: LOST — a second store over the same path sees no order`.
   Same probe after: `PERSIST: OK … INVOICE: OK — the same bolt11  CLAIM: first=won second=lost`.
-- `deno check main.ts src/*.ts` clean; `deno task test` -> **113 passed | 0 failed**
-  (98 pre-existing + 15 new), including the 4-OS-process claim race
-  (`4 spawns -> exactly one won`, none failed open).
+- Composition-hole RED/GREEN: `~/reports/t_bd0f57a8-p7fix/test-red-composition-hole.txt` (12 passed /
+  2 failed with only `src/sweeper.ts` reverted) -> `test-green.txt` (139 passed / 0 failed).
+- `deno check main.ts src/*.ts tests/*.ts` clean; `deno task test` -> **139 passed (2 steps) | 0 failed**
+  (up from 113 before the rebase: PR #8's sweep suite plus the two new barrier tests), including the
+  4-OS-process claim race (`4 spawns -> exactly one won`, none failed open).
 
 ## Not proven here (stated, not hidden)
 - No live settlement was executed end to end: that needs a real payment to the mint behind the

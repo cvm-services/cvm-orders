@@ -20,7 +20,9 @@ ORDER_DB_PATH=/var/lib/cvm-orders/orders.sqlite \
 
 `ORDER_DB_PATH` is where the orders live and it is **required in production** (see "Durable state").
 A bare `deno run main.ts` — no `ORDER_DB_PATH` — falls back to `data/orders.sqlite` rather than to
-memory, so a forgetful start is still durable.
+memory, so a forgetful start is still durable; the directory is created if it does not exist yet.
+There is no in-memory arm for any caller: a module that IMPORTS this file wires nothing at all, so an
+import cannot silently get an ephemeral store that loses the invoice (see `createService()`).
 
 Endpoints: `POST /orders` (the basket: `{venue_slug, items, fulfilment, inputs}`),
 `GET /orders/:id/invoice`, `GET /orders/:id`,
@@ -73,6 +75,14 @@ Sats are final **before** any fiat spend. The gate is structural, not advisory:
   settlement latency is bounded by the interval (the client's poll still usually wins the race), and
   the sweep reads the same store the route does, so a multi-replica deploy would run one sweep per
   replica (the compare-and-set is atomic only within a process).
+
+  The sweep commits through the **same** `claimSettlement()` the poll does — never a bare
+  `transition(id, "paid")`. A bare transition would flip the order to `paid` while leaving
+  `settlement_proofs` empty, so the payment request would still look unspent and the same sats could
+  settle a SECOND order through the poll. A claim the sweep loses to a concurrent poll is just
+  `unchanged` (that is the exactly-once mechanism working); a claim refused because the invoice
+  ALREADY paid a different order is counted as `SweepReport.reused` and logged, because one payment
+  paying two orders is not "nothing to do".
 
 The rail is `CASHU_MINT_URL` (Cashu NUT-04 over BOLT11). Tests inject an in-memory fake and need no
 network. Which mint to point at is [its own document](docs/mint-discovery.md): candidates are probed
