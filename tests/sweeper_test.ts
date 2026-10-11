@@ -126,13 +126,32 @@ class SlowRail implements PaymentRail {
   }
 }
 
-/** Counts the transitions the store actually committed. */
+/**
+ * Counts the settlement claims the store actually WON.
+ *
+ * Counting `transition()` is not the same measurement any more: since the sweep
+ * settles through the SAME durable claim as the poll (`claimSettlement`), a losing
+ * racer never calls `transition` at all — it returns `lost` and writes nothing. So
+ * "exactly once" is measured on the claim, which is where the exactly-once
+ * property lives.
+ */
 class CountingStore extends OrderStore {
   paid = 0;
-  override transition(id: string, to: Parameters<OrderStore["transition"]>[1], meta?: Parameters<OrderStore["transition"]>[2]) {
-    const order = super.transition(id, to, meta);
-    if (to === "paid") this.paid++;
-    return order;
+  expired = 0;
+  reused = 0;
+  override claimSettlement(
+    id: string,
+    claim: Parameters<OrderStore["claimSettlement"]>[1],
+    to: Parameters<OrderStore["claimSettlement"]>[2] = "paid",
+  ) {
+    const outcome = super.claimSettlement(id, claim, to);
+    if (outcome === "won") {
+      if (to === "paid") this.paid++;
+      else this.expired++;
+    } else if (outcome === "proof_spent") {
+      this.reused++;
+    }
+    return outcome;
   }
 }
 
@@ -274,12 +293,80 @@ Deno.test("a customer poll and the sweep racing produce exactly one transition",
   const sweep = sweepOnce({ store, rail, now: () => T0, log: () => {} });
   await Promise.all([poll, sweep]);
 
-  assertEquals(store.paid, 1, "exactly one transition committed; the loser lost the compare-and-set");
+  assertEquals(store.paid, 1, "exactly one settlement claim won; the loser lost the compare-and-set");
   assertEquals(store.get("o-race")?.state, "paid");
   assertEquals(store.queue().map((o) => o.id), ["o-race"]);
   rail.inner.setStatus(quoteId, "expired");
   await sweepOnce({ store, rail, now: () => T0, log: () => {} });
   assertEquals(store.get("o-race")?.state, "paid", "a paid order is never re-read as expired");
+});
+
+// --- the sweep and the poll spend the SAME payment request -------------------
+
+Deno.test("a sweep-settled quote is spent everywhere: the same payment cannot settle a second order", async () => {
+  const { store, rail, deps } = bench();
+  const quoteId = await awaitingOrder(store, rail, "o-first");
+  rail.setStatus(quoteId, "settled");
+  await sweepOnce(deps);
+
+  assertEquals(store.get("o-first")?.state, "paid", "setup: the sweep settled the first order");
+  // The whole composition hole in one assertion: a sweep that settles with a bare
+  // `transition()` leaves this empty, and the payment request stays unspent — free
+  // to settle a SECOND order through the poll.
+  assertEquals(store.proofSpentBy(quoteId), "o-first", "the sweep must spend the payment request, exactly like the poll");
+
+  // A second order carrying the SAME payment request (mint replay, or a bug).
+  store.create("o-second", { venue_slug: "test-venue" }, money);
+  await store.ensureInvoice("o-second", () =>
+    Promise.resolve<OrderInvoice>({
+      bolt11: "lnbc-replayed",
+      quoteId,
+      expiresAt: new Date(T0 + 900_000).toISOString(),
+      qr: QR,
+    }));
+
+  const handle = createRoute({
+    store,
+    challenges: new ChallengeStore({ ttlSeconds: 300 }),
+    facilitatorPubkey: null,
+    now: () => T0_SECONDS,
+    rail,
+    catalog,
+  });
+  const res = await handle(new Request("https://cvm-pwa.example/orders/o-second"));
+  assertEquals(res.status, 200);
+  const body = await res.json();
+  assertEquals(body.state, "awaiting_payment", "the sats already paid o-first; the poll must not pay a second order");
+  assertEquals(store.get("o-second")?.state, "awaiting_payment");
+  assertEquals(store.queue().map((o) => o.id), ["o-first"], "one payment, one order in the queue");
+});
+
+Deno.test("the sweep leaves an order alone — and says so — when its payment already settled another", async () => {
+  const { store, rail, deps, lines } = bench();
+  const quoteId = await awaitingOrder(store, rail, "o-first");
+  rail.setStatus(quoteId, "settled");
+  await sweepOnce(deps);
+  assertEquals(store.get("o-first")?.state, "paid");
+
+  store.create("o-second", { venue_slug: "test-venue" }, money);
+  await store.ensureInvoice("o-second", () =>
+    Promise.resolve<OrderInvoice>({
+      bolt11: "lnbc-replayed",
+      quoteId,
+      expiresAt: new Date(T0 + 900_000).toISOString(),
+      qr: QR,
+    }));
+
+  const report = await sweepOnce(deps);
+
+  assertEquals(report.checked, 1);
+  assertEquals(report.paid, 0, "the rail says settled, but this payment has already been spent");
+  assertEquals(report.reused, 1, "a reuse is not 'nothing to do': it is a money anomaly and it is counted");
+  assertEquals(store.get("o-second")?.state, "awaiting_payment", "one payment must never pay two orders");
+  assert(
+    lines.some((l) => l.includes("payment request already settled")),
+    `no reuse warning line in ${JSON.stringify(lines)}`,
+  );
 });
 
 // --- scope: only awaiting_payment orders with an invoice ---------------------

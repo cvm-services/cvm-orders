@@ -446,27 +446,57 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 }
 
 /**
- * The service's own order store. Exported because the sweep has to reconcile the
- * SAME store the routes answer from — a wiring test drives this store, this route
- * and the sweep starter below, with no production-only branch anywhere.
- *
  * Where the orders live. Production MUST be a file: an in-memory store loses the
  * invoice (so a restart re-quotes a second bolt11 for an order whose first one
  * the customer already paid — stranded sats) and the settlement claim. A bare
- * `deno run main.ts` therefore defaults to `data/orders.sqlite`; only an
- * imported module (the test suite) falls back to memory.
+ * `deno run main.ts` therefore defaults to `data/orders.sqlite`.
+ *
+ * There is deliberately NO in-memory arm here. This used to be
+ * `orderDbPath(env, import.meta.main)` with a `:memory:` fallback for
+ * `isMain === false`, which meant any entrypoint that IMPORTED this file (rather
+ * than running it) silently got an ephemeral store — invisible in production,
+ * where the store and the settlement claim are the whole point. An import now
+ * gets the same durable default, and the suite injects its own store through
+ * `createRoute({ store })` instead of relying on a test-only branch.
  */
-export function orderDbPath(env: { get(key: string): string | undefined }, isMain: boolean): string {
+const DEFAULT_ORDER_DB_PATH = "data/orders.sqlite";
+
+/** The slice of `Deno.env` this module reads (tests pass a plain object). */
+export type EnvLike = { get(key: string): string | undefined };
+
+export function orderDbPath(env: EnvLike): string {
   const raw = env.get("ORDER_DB_PATH");
-  if (raw && raw.trim()) return raw.trim();
-  return isMain ? "data/orders.sqlite" : ":memory:";
+  return raw && raw.trim() ? raw.trim() : DEFAULT_ORDER_DB_PATH;
 }
 
-export const store = new OrderStore({ path: orderDbPath(Deno.env, import.meta.main) });
-const challenges = new ChallengeStore();
+/**
+ * Make sure the parent directory of a durable store EXISTS before opening it.
+ *
+ * The default is a file (`data/orders.sqlite`), and a file needs its directory:
+ * `node:sqlite` answers a missing parent with "unable to open database file", so
+ * a bare `deno run main.ts` on a fresh checkout died before it served anything —
+ * the durable default was only ever true if something else had happened to create
+ * the directory. Creating it here makes "durable by default" a property of the
+ * service instead of a deployment convention.
+ *
+ * `:memory:` (what a test injects) and `file:` URIs have no directory to create,
+ * and a real failure (permissions, a path that is a file) still throws: this is
+ * `mkdir -p`, not a swallow.
+ */
+function ensureStoreDir(path: string): void {
+  if (path === ":memory:" || path.startsWith("file:")) return;
+  const cut = path.lastIndexOf("/");
+  if (cut < 0) return; // a bare filename lives in the cwd, which exists
+  const dir = path.slice(0, cut) || "/";
+  try {
+    Deno.mkdirSync(dir, { recursive: true });
+  } catch (error) {
+    if (!(error instanceof Deno.errors.AlreadyExists)) throw error;
+  }
+}
 
-function facilitatorPubkeyFromEnv(): string | null {
-  const raw = Deno.env.get("FACILITATOR_NPUB");
+function facilitatorPubkeyFromEnv(env: EnvLike): string | null {
+  const raw = env.get("FACILITATOR_NPUB");
   if (!raw) return null;
   try {
     return normalizePubkey(raw);
@@ -481,17 +511,37 @@ function facilitatorPubkeyFromEnv(): string | null {
 }
 
 /**
- * Module-level wiring: the rail is left `undefined` so it resolves from the
- * environment on first use (CASHU_MINT_URL, else the selected mint in
- * config/mint.json), exactly like `railFromEnv`/`resolveMintUrl` describe.
+ * The service's own wiring: ONE store, shared by the routes and the sweep, built
+ * explicitly when this file is the entrypoint.
+ *
+ * It is a function, not a module-level `const`, for one reason: a module-level
+ * store exists the moment anything imports this file, and the previous version
+ * resolved its path from `import.meta.main` — so an IMPORT silently selected the
+ * `:memory:` arm while `deno run main.ts` selected the file. That is a bug you
+ * cannot see in production and only discover after a restart has already
+ * stranded sats. Callers get the durable path, always; tests inject their own
+ * store through `createRoute({ store })` rather than borrowing a production
+ * branch.
+ *
+ * The rail is left `undefined` so it resolves from the environment on first use
+ * (CASHU_MINT_URL, else the selected mint in config/mint.json), exactly like
+ * `railFromEnv`/`resolveMintUrl` describe.
  */
-export const route = createRoute({
-  store,
-  challenges,
-  facilitatorPubkey: facilitatorPubkeyFromEnv(),
-  allowChallengeCredential: Deno.env.get("NIP98_STRICT") !== "1",
-  ...(Deno.env.get("CASHU_MINT_URL") ? { rail: railFromEnv(Deno.env) } : {}),
-});
+export function createService(
+  env: EnvLike = Deno.env,
+): { store: OrderStore; route: ReturnType<typeof createRoute> } {
+  const path = orderDbPath(env);
+  ensureStoreDir(path);
+  const store = new OrderStore({ path });
+  const route = createRoute({
+    store,
+    challenges: new ChallengeStore(),
+    facilitatorPubkey: facilitatorPubkeyFromEnv(env),
+    allowChallengeCredential: env.get("NIP98_STRICT") !== "1",
+    ...(env.get("CASHU_MINT_URL") ? { rail: railFromEnv(env) } : {}),
+  });
+  return { store, route };
+}
 
 export { CardMaterialRefused, serveOptions };
 
@@ -523,7 +573,10 @@ export function startOrderSweeper(
 if (import.meta.main) {
   // G1: the mint is asked on the SERVICE's clock, so `paid` no longer depends on
   // the customer's browser staying open. Same rail resolver as the routes, so a
-  // tick and a poll can never disagree about which mint they are talking to.
+  // tick and a poll can never disagree about which mint they are talking to —
+  // and the same store, so the sweep's settlement claim is the one the routes
+  // would have taken.
+  const { store, route } = createService();
   startOrderSweeper({ store, rail: createRailResolver({}) });
   serve(route, serveOptions(Deno.env));
 }

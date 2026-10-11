@@ -12,7 +12,7 @@
  * a service restart is.
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { createRoute, orderDbPath, type RouteDeps } from "../main.ts";
+import { createRoute, createService, orderDbPath, type RouteDeps } from "../main.ts";
 import { type Catalog } from "../src/catalog.ts";
 import { ChallengeStore } from "../src/nip98.ts";
 import { FakeRail } from "../src/rail.ts";
@@ -276,14 +276,37 @@ Deno.test("the schema migrates a deployed (v1) database in place", async () => {
   store.close();
 });
 
-Deno.test("a production start is durable by default; only an import may be in-memory", () => {
+Deno.test("the order store is durable for every entrypoint, an import included", () => {
   const env = (values: Record<string, string>) => ({
     get: (k: string) => values[k],
   });
-  assertEquals(orderDbPath(env({}), true), "data/orders.sqlite", "a bare start writes to a file");
-  assertEquals(orderDbPath(env({ ORDER_DB_PATH: "/var/lib/cvm-orders/o.sqlite" }), true), "/var/lib/cvm-orders/o.sqlite");
-  assertEquals(orderDbPath(env({ ORDER_DB_PATH: "  " }), true), "data/orders.sqlite");
-  // Imported (the suite) stays hermetic — no test writes into the repo.
-  assertEquals(orderDbPath(env({}), false), ":memory:");
-  assertEquals(orderDbPath(env({ ORDER_DB_PATH: "/tmp/x.sqlite" }), false), "/tmp/x.sqlite");
+  assertEquals(orderDbPath(env({})), "data/orders.sqlite", "a bare start writes to a file");
+  assertEquals(orderDbPath(env({ ORDER_DB_PATH: "/var/lib/cvm-orders/o.sqlite" })), "/var/lib/cvm-orders/o.sqlite");
+  assertEquals(orderDbPath(env({ ORDER_DB_PATH: "  " })), "data/orders.sqlite");
+  // There is deliberately no `isMain` arm any more. An import used to silently
+  // select `:memory:`, so whatever imported this file lost the persisted invoice —
+  // and a restart re-quoted a SECOND bolt11 for an order whose first invoice the
+  // customer had already paid. Every caller now gets the durable path; the suite
+  // injects its own store through `createRoute({ store })` instead.
+});
+
+Deno.test("a cold start creates the store's directory instead of dying on it", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "cvm-orders-cold-start-" });
+  const path = `${dir}/nested/orders.sqlite`;
+  const env = { get: (k: string) => (k === "ORDER_DB_PATH" ? path : undefined) };
+  try {
+    // No parent directory exists yet — which is exactly what a fresh checkout with
+    // the default `data/orders.sqlite` looks like. `node:sqlite` used to answer
+    // "unable to open database file" and the service never started.
+    const { store } = createService(env);
+    store.create("o-cold", { venue_slug: "test-venue" }, money);
+    store.close();
+
+    // And it really is a file, not a memory store: a second start reads it back.
+    const second = createService(env);
+    assertEquals(second.store.get("o-cold")?.state, "awaiting_payment", "a restart sees the order");
+    second.store.close();
+  } finally {
+    await Deno.remove(dir, { recursive: true });
+  }
 });
