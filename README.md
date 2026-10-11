@@ -14,8 +14,13 @@ ever contains orders whose sats are already final.
 
 ```sh
 deno task test
-FACILITATOR_NPUB=npub1... deno run --allow-net --allow-env main.ts
+ORDER_DB_PATH=/var/lib/cvm-orders/orders.sqlite \
+  FACILITATOR_NPUB=npub1... deno run --allow-net --allow-env --allow-read --allow-write main.ts
 ```
+
+`ORDER_DB_PATH` is where the orders live and it is **required in production** (see "Durable state").
+A bare `deno run main.ts` — no `ORDER_DB_PATH` — falls back to `data/orders.sqlite` rather than to
+memory, so a forgetful start is still durable.
 
 Endpoints: `POST /orders` (the basket: `{venue_slug, items, fulfilment, inputs}`),
 `GET /orders/:id/invoice`, `GET /orders/:id`,
@@ -44,11 +49,17 @@ Sats are final **before** any fiat spend. The gate is structural, not advisory:
   while it is unexpired. `qr` is a self-contained `data:` URI, so the client's `<img src>` needs no
   extra fetch. With no rail configured the endpoint is a **503 with a machine-readable body — never
   a bogus invoice**.
-* `GET /orders/:id` asks the rail for settlement and performs **exactly one** compare-and-set
-  `awaiting_payment -> paid`. A second poll does not transition again. An expired quote expires the
-  order and can never pay it.
+* `GET /orders/:id` asks the rail for settlement and takes **exactly once** the claim
+  `awaiting_payment -> paid` (`OrderStore.claimSettlement()`: one conditional UPDATE plus a single-use
+  `settlement_proofs` row, inside one `BEGIN IMMEDIATE` transaction). A second poll, a second process
+  and a restart replay all lose that claim and write nothing. An expired quote expires the order and
+  can never pay it.
 * `POST /orders/:id/transition` **refuses** `awaiting_payment -> paid` unless the settlement is
-  rail-verified, so the public API cannot be used to post an order into `paid`.
+  rail-verified, so the public API cannot be used to post an order into `paid`. When it is verified,
+  the console takes the *same* exactly-once claim the poll takes — a console click and a customer poll
+  racing each other cannot both settle one order.
+* One payment request (mint quote) may settle **at most one order**, forever: the second order to
+  present the same quote is refused with `settlement_proof_reused` (409) and stays `awaiting_payment`.
 * **The service reconciles its own orders** (`src/sweeper.ts`). A sweep starts with the process and
   asks the rail about every `awaiting_payment` order that has an invoice, every
   `ORDER_SWEEP_INTERVAL_MS` (default `30000`; `0` disables it, loudly in the log; a garbage value
@@ -68,6 +79,36 @@ network. Which mint to point at is [its own document](docs/mint-discovery.md): c
 for NUT-04/05/07 capability rather than trusted.
 The route and the sweep resolve that rail through one lazy per-process `createRailResolver()`, so
 they always observe the same rail.
+
+## Durable state (the invoice and the claim outlive the process)
+
+The store is SQLite (`node:sqlite`, WAL) — previously an in-process `Map`, which the deploy script
+documented as "a restart empties the queue by design". Two things it lost were money:
+
+* **the invoice.** If a restart re-quoted a second BOLT11 for an order whose first invoice the
+  customer had already paid, the sats were stranded and the order could never reach `paid`. The
+  invoice is now written with a compare-and-set (`UPDATE ... WHERE invoice IS NULL`), so the first
+  invoice wins, survives restarts, and a repeat/concurrent call gets the same `bolt11`.
+* **the settlement claim.** `awaiting_payment -> paid` is a claim about money; "exactly once" has to
+  hold across processes and restarts, not just inside one isolate. `claimSettlement()` is one
+  conditional UPDATE plus a `settlement_proofs` row (PRIMARY KEY on the payment request) inside one
+  `BEGIN IMMEDIATE` transaction, and `busy_timeout` makes lock contention wait instead of throwing.
+
+Also durable: the `Idempotency-Key` replay (one basket, one order, still true after a restart) and the
+terminal states (`expired`, `ready`, `refunded` have no outgoing edge, so a late poll or a restart
+cannot revive an order that was never paid).
+
+Tables: `orders`, `settlement_proofs`, `idempotency`, with `PRAGMA user_version` as the schema
+version. `#migrate()` also backfills columns added after the first shipped schema via
+`PRAGMA table_info` — `CREATE TABLE IF NOT EXISTS` is a no-op on an existing table, so a DDL-only
+change would work in CI and do nothing on a deployed file (`tests/durable_store_test.ts` opens a real
+v1 file and migrates it).
+
+Proof, not assertion (`tests/durable_store_test.ts`, `tests/settlement_claim_test.ts`): restart
+durability with a second store over the same file; the first-invoice-wins race; a restart that cannot
+re-quote and cannot re-claim; and **four independent OS processes** racing one claim, where exactly
+one may win (threads would prove nothing — SQLite's unix VFS takes per-*process* POSIX advisory
+locks).
 
 ## Authentication (NIP-98, verified here)
 

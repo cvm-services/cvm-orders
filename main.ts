@@ -143,10 +143,13 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
   /**
    * Orders created from an Idempotency-Key, so a client retry (a flaky network,
    * a double-tap on Pay) gets its original order back instead of a second one.
-   * Bounded: this is a convenience for retries, not a durable store.
+   * DURABLE: the key lives in the order store, so the replay still works after a
+   * restart (the in-memory map this replaced did not).
    */
-  const idempotency = new Map<string, Record<string, unknown>>();
-  const IDEMPOTENCY_LIMIT = 1000;
+  function replay(key: string): Response | null {
+    const replayed = deps.store.idempotentReplay(key);
+    return replayed ? json(replayed, 200, { "idempotency-replayed": "true" }) : null;
+  }
 
   /** A credential that is present must be valid, on every order read. */
   function denyBadCredential(req: Request): Response | null {
@@ -258,22 +261,20 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       if (!order) return json({ error: "not found" }, 404);
 
       // ADR-0008, the automatic half: the rail is the only thing that can move an
-      // order out of awaiting_payment here. A settled quote transitions EXACTLY
-      // once (the compare-and-set loses on every later poll, which is why the
-      // state is checked first), and an expired quote expires the order instead
-      // of paying it.
+      // order out of awaiting_payment here. The move is `claimSettlement()` — one
+      // conditional UPDATE plus a single-use payment-request row inside one
+      // transaction — so a settled quote transitions EXACTLY once even when two
+      // polls, two processes, or a restart replay race for it. The loser writes
+      // nothing and simply reports the state the winner committed.
       if (order.state === "awaiting_payment" && order.invoice) {
         const verdict = await settlementVerdict(order);
         if (verdict === "settled" || verdict === "expired") {
-          try {
-            order = deps.store.transition(order.id, verdict === "settled" ? "paid" : "expired", {
-              from: "awaiting_payment",
-            });
-          } catch {
-            // Lost the compare-and-set: another poll already moved it. The
-            // current state is the answer, and no second transition happened.
-            order = deps.store.get(order.id) ?? order;
-          }
+          deps.store.claimSettlement(
+            order.id,
+            { quoteId: order.invoice.quoteId },
+            verdict === "settled" ? "paid" : "expired",
+          );
+          order = deps.store.get(order.id) ?? order;
         }
       }
 
@@ -303,6 +304,9 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       // The facilitator's own credential is NOT enough to claim sats arrived.
       // Without a rail verdict of `settled` this call cannot reach `paid`, so the
       // public API has no path into the paid state that skips the rail (ADR-0008).
+      // Even with the verdict, the state change goes through the SAME durable
+      // exactly-once claim the customer poll uses — so a console click and a poll
+      // racing each other cannot both pay one order, and neither can a restart.
       if (body.state === "paid") {
         const current = deps.store.get(transition[1]);
         if (!current) return json({ error: "not found" }, 404);
@@ -315,6 +319,28 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
               settlement: verdict,
             }, 402);
           }
+          if (!current.invoice) {
+            return json({
+              error: "refused: an order reaches paid only against a real invoice",
+              reason: "settlement_not_verified",
+              settlement: verdict,
+            }, 402);
+          }
+          const outcome = deps.store.claimSettlement(current.id, {
+            quoteId: current.invoice.quoteId,
+          });
+          if (outcome === "proof_spent") {
+            return json({
+              error: "refused: this payment request already settled another order",
+              reason: "settlement_proof_reused",
+            }, 409);
+          }
+          const settled = deps.store.get(current.id);
+          if (!settled?.invoice) return json({ error: "not found" }, 404);
+          // `lost` here means someone else applied the very same claim (the
+          // customer's poll, or another console tab). That is a success, not an
+          // error: report the order the winner committed.
+          return json(settled);
         }
       }
 
@@ -347,8 +373,8 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 
       const key = req.headers.get("idempotency-key")?.trim();
       if (key) {
-        const replayed = idempotency.get(key);
-        if (replayed) return json(replayed, 200, { "idempotency-replayed": "true" });
+        const replayed = replay(key);
+        if (replayed) return replayed;
       }
 
       const catalog = await catalogFor();
@@ -372,38 +398,47 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
         ? body.inputs as Record<string, unknown>
         : {};
       const id = crypto.randomUUID();
-      const order = deps.store.create(
-        id,
-        { venue_slug: priced.venue_slug, fulfilment: priced.fulfilment, items: priced.lines, inputs },
-        {
-          venue_slug: priced.venue_slug,
-          items: priced.lines,
-          subtotal: priced.subtotal,
-          fee: priced.fee,
-          total: priced.total,
-          fulfilment: priced.fulfilment,
-          inputs,
-        },
-      );
-
-      const response = {
-        id,
+      const payload = {
+        venue_slug: priced.venue_slug,
+        fulfilment: priced.fulfilment,
+        items: priced.lines,
+        inputs,
+      };
+      const money = {
+        venue_slug: priced.venue_slug,
+        items: priced.lines,
+        subtotal: priced.subtotal,
+        fee: priced.fee,
+        total: priced.total,
+        fulfilment: priced.fulfilment,
+        inputs,
+      };
+      // The response the PWA reads: the server-assigned id and the money the
+      // server itself computed. No invoice exists yet (it is created on the
+      // invoice endpoint), so there is no expiry to promise — the invoice call
+      // returns the real one.
+      const respond = (order: Order): Record<string, unknown> => ({
+        id: order.id,
         state: order.state,
         subtotal: order.subtotal,
         fee: order.fee,
         total: order.total,
-        // No invoice exists yet (it is created on the invoice endpoint), so there
-        // is no expiry to promise. The invoice call returns the real one.
         expires_at: null,
-      };
+      });
+
       if (key) {
-        if (idempotency.size >= IDEMPOTENCY_LIMIT) {
-          const oldest = idempotency.keys().next().value;
-          if (oldest !== undefined) idempotency.delete(oldest);
-        }
-        idempotency.set(key, response);
+        // Order + Idempotency-Key in one transaction: a double-tap creates one
+        // order, and a retry after a restart still gets the original.
+        const result = deps.store.createIdempotent(key, id, payload, money, respond);
+        return json(
+          result.response,
+          result.replayed ? 200 : 201,
+          result.replayed ? { "idempotency-replayed": "true" } : {},
+        );
       }
-      return json(response, 201);
+
+      const order = deps.store.create(id, payload, money);
+      return json(respond(order), 201);
     }
 
     return json({ error: "not found" }, 404);
@@ -414,8 +449,20 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
  * The service's own order store. Exported because the sweep has to reconcile the
  * SAME store the routes answer from — a wiring test drives this store, this route
  * and the sweep starter below, with no production-only branch anywhere.
+ *
+ * Where the orders live. Production MUST be a file: an in-memory store loses the
+ * invoice (so a restart re-quotes a second bolt11 for an order whose first one
+ * the customer already paid — stranded sats) and the settlement claim. A bare
+ * `deno run main.ts` therefore defaults to `data/orders.sqlite`; only an
+ * imported module (the test suite) falls back to memory.
  */
-export const store = new OrderStore();
+export function orderDbPath(env: { get(key: string): string | undefined }, isMain: boolean): string {
+  const raw = env.get("ORDER_DB_PATH");
+  if (raw && raw.trim()) return raw.trim();
+  return isMain ? "data/orders.sqlite" : ":memory:";
+}
+
+export const store = new OrderStore({ path: orderDbPath(Deno.env, import.meta.main) });
 const challenges = new ChallengeStore();
 
 function facilitatorPubkeyFromEnv(): string | null {

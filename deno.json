@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "test": "deno test --coverage=coverage --allow-read --allow-env --allow-net tests/",
+    "test": "deno test --coverage=coverage --allow-read --allow-write --allow-env --allow-net --allow-run=deno tests/",
     "coverage": "deno coverage coverage --lcov --include='src/' > coverage.lcov"
   },
   "imports": {
