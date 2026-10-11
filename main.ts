@@ -5,6 +5,7 @@ import { assertNoCardMaterial, CardMaterialRefused } from "./src/hygiene.ts";
 import { CashuRail, type PaymentRail, qrDataUri, RailError, RailUnavailableError, railFromEnv } from "./src/rail.ts";
 import { resolveMintUrl } from "./src/mints.ts";
 import { type Catalog, CatalogRefusal, loadCatalog, priceOrder } from "./src/catalog.ts";
+import { startSweeper, type SweeperDeps, type SweeperHandle, sweepIntervalMsFromEnv } from "./src/sweeper.ts";
 import {
   CHALLENGE_PATH,
   ChallengeStore,
@@ -74,6 +75,27 @@ function invoiceBody(order: Order): Record<string, unknown> {
   };
 }
 
+/**
+ * Lazy, per-process payment rail. The route and the sweep share one resolver, so
+ * both see the SAME rail (and the same mint selection) inside a process.
+ * `deps.rail === undefined` means "resolve from the environment on first use"
+ * (CASHU_MINT_URL, else the selected mint in config/mint.json); `null` means
+ * "explicitly no rail", so callers fail closed instead of inventing a mint.
+ */
+export function createRailResolver(
+  deps: Pick<RouteDeps, "rail">,
+): () => Promise<PaymentRail | null> {
+  let cache: PaymentRail | null | undefined;
+  return async (): Promise<PaymentRail | null> => {
+    if (deps.rail !== undefined) return deps.rail;
+    if (cache === undefined) {
+      const url = await resolveMintUrl();
+      cache = url ? new CashuRail({ baseUrl: url }) : null;
+    }
+    return cache;
+  };
+}
+
 export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response> {
   const now = deps.now ?? nowSeconds;
   const auth = {
@@ -85,18 +107,10 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 
   // Lazy, per-process resolution of the two external services. Discovery is an
   // operational step (src/mints.ts), never a request-path dependency: it happens
-  // once, here, on the first request that needs it.
-  let railCache: PaymentRail | null | undefined;
+  // once, on the first caller that needs it (the customer's invoice, or a tick
+  // of the sweep).
+  const railFor = createRailResolver(deps);
   let catalogCache: Catalog | null | undefined;
-
-  async function railFor(): Promise<PaymentRail | null> {
-    if (deps.rail !== undefined) return deps.rail;
-    if (railCache === undefined) {
-      const url = await resolveMintUrl();
-      railCache = url ? new CashuRail({ baseUrl: url }) : null;
-    }
-    return railCache;
-  }
 
   async function catalogFor(): Promise<Catalog | null> {
     if (deps.catalog !== undefined) return deps.catalog;
@@ -396,7 +410,12 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
   };
 }
 
-const store = new OrderStore();
+/**
+ * The service's own order store. Exported because the sweep has to reconcile the
+ * SAME store the routes answer from — a wiring test drives this store, this route
+ * and the sweep starter below, with no production-only branch anywhere.
+ */
+export const store = new OrderStore();
 const challenges = new ChallengeStore();
 
 function facilitatorPubkeyFromEnv(): string | null {
@@ -429,4 +448,35 @@ export const route = createRoute({
 
 export { CardMaterialRefused, serveOptions };
 
-if (import.meta.main) serve(route, serveOptions(Deno.env));
+/**
+ * Service start: the settlement/expiry sweep the order service runs for itself.
+ *
+ * Parameterised `deps` and `env` so this is the same code the deployed entrypoint
+ * runs and a test can start the identical wiring — no `NODE_ENV` switch, no
+ * test-only interval.
+ */
+export function startOrderSweeper(
+  deps: Pick<SweeperDeps, "store" | "rail" | "now" | "log">,
+  env: { get(key: string): string | undefined } = Deno.env,
+): SweeperHandle {
+  const handle = startSweeper(deps, { intervalMs: sweepIntervalMsFromEnv(env) });
+  const log = deps.log ?? ((line: string) => console.log(line));
+  if (handle.active) {
+    log(
+      `orders sweep: settlement + expiry every ${handle.intervalMs}ms, server-side (a customer who pays and closes the tab still gets a paid order)`,
+    );
+  } else {
+    log(
+      "orders sweep: DISABLED (ORDER_SWEEP_INTERVAL_MS=0) — settlement and expiry then ride the customer's poll only",
+    );
+  }
+  return handle;
+}
+
+if (import.meta.main) {
+  // G1: the mint is asked on the SERVICE's clock, so `paid` no longer depends on
+  // the customer's browser staying open. Same rail resolver as the routes, so a
+  // tick and a poll can never disagree about which mint they are talking to.
+  startOrderSweeper({ store, rail: createRailResolver({}) });
+  serve(route, serveOptions(Deno.env));
+}
