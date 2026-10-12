@@ -109,6 +109,11 @@ Deno.test("the service's own wiring settles and expires with no customer poll", 
   // exactly as the deployed process does.
   Deno.env.set("CASHU_MINT_URL", mintUrl);
   Deno.env.set("ORDER_SWEEP_INTERVAL_MS", "25");
+  // The service is durable by default now, and durable means a FILE. Point it at a
+  // temp path so this test never writes into the repo — and at a path whose
+  // directory does not exist yet, so the cold-start case is the one exercised.
+  const dbDir = await Deno.makeTempDir({ prefix: "cvm-orders-service-" });
+  Deno.env.set("ORDER_DB_PATH", `${dbDir}/nested/orders.sqlite`);
 
   // Every outbound HTTP call this test's service makes, recorded.
   const outbound: string[] = [];
@@ -121,7 +126,10 @@ Deno.test("the service's own wiring settles and expires with no customer poll", 
   const sweepLog: string[] = [];
   try {
     const service = await import("../main.ts");
-    const { route, store } = service;
+    // Build the service the way `import.meta.main` does: explicitly, at call
+    // time. Importing main.ts must wire nothing on its own — that was the bug the
+    // import-time store used to hide.
+    const { route, store } = service.createService();
     // The SAME starter `import.meta.main` calls, with the same env-driven
     // interval and the same shared rail resolver.
     const sweep = service.startOrderSweeper(
@@ -182,6 +190,8 @@ Deno.test("the service's own wiring settles and expires with no customer poll", 
     globalThis.fetch = realFetch;
     Deno.env.delete("CASHU_MINT_URL");
     Deno.env.delete("ORDER_SWEEP_INTERVAL_MS");
+    Deno.env.delete("ORDER_DB_PATH");
+    await Deno.remove(dbDir, { recursive: true });
     await mint.server.shutdown();
   }
 });
