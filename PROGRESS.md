@@ -120,3 +120,12 @@ paid orders.
 - The rail's mint is a single point of truth; a mint reporting `PAID` for an unpaid quote is out of
   scope (the rail trusts the mint — see `docs/mint-discovery.md` for why the mint is chosen
   carefully).
+## 2026-10-12 — ADR-0014 venue order number, DEPLOYED
+- `main.ts`: GET /orders/:id returns `venue_reference` + `venue_reference_url` (from durable receipt; null until recorded).
+- `docs/adr/0014-verifiable-venue-order-number.md` — recon table proving the FoodAmigos tracker is account-scoped (list=401, single-order keyed by storefront UUID) => customer cannot type the number into the venue's public site. Stage-2 integration, not papered over.
+- `tests/venue_reference_test.ts` — 3 tests (null / recorded / survives reopen). Suite 142/0.
+- `scripts/cvm-deploy-service.sh` — NEW. The catalog script never shipped main.ts/src, so a committed fix could sit undeployed. Prints live response shape BEFORE/AFTER.
+- Deploy gate bugs found by running it: pipe-into-grep hung on the coverage reporter; deno ANSI-wraps `ok` so `^ok` never matched. Both fixed in `795bd86`.
+- DEPLOYED + verified live: BEFORE venue_reference_field=False, AFTER =True.
+- cvm-registry `24048d2`: PWA status card + timeline honesty + console "→ customer" marker. Deployed; served bundle verified.
+- VENUE_RECEIPT gate: `paid` is a rail claim (ADR-0008), so the settled path needs a real paid invoice — worker proving the signed lifecycle against the live service.
