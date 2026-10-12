@@ -143,10 +143,13 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
   /**
    * Orders created from an Idempotency-Key, so a client retry (a flaky network,
    * a double-tap on Pay) gets its original order back instead of a second one.
-   * Bounded: this is a convenience for retries, not a durable store.
+   * DURABLE: the key lives in the order store, so the replay still works after a
+   * restart (the in-memory map this replaced did not).
    */
-  const idempotency = new Map<string, Record<string, unknown>>();
-  const IDEMPOTENCY_LIMIT = 1000;
+  function replay(key: string): Response | null {
+    const replayed = deps.store.idempotentReplay(key);
+    return replayed ? json(replayed, 200, { "idempotency-replayed": "true" }) : null;
+  }
 
   /** A credential that is present must be valid, on every order read. */
   function denyBadCredential(req: Request): Response | null {
@@ -258,22 +261,20 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       if (!order) return json({ error: "not found" }, 404);
 
       // ADR-0008, the automatic half: the rail is the only thing that can move an
-      // order out of awaiting_payment here. A settled quote transitions EXACTLY
-      // once (the compare-and-set loses on every later poll, which is why the
-      // state is checked first), and an expired quote expires the order instead
-      // of paying it.
+      // order out of awaiting_payment here. The move is `claimSettlement()` — one
+      // conditional UPDATE plus a single-use payment-request row inside one
+      // transaction — so a settled quote transitions EXACTLY once even when two
+      // polls, two processes, or a restart replay race for it. The loser writes
+      // nothing and simply reports the state the winner committed.
       if (order.state === "awaiting_payment" && order.invoice) {
         const verdict = await settlementVerdict(order);
         if (verdict === "settled" || verdict === "expired") {
-          try {
-            order = deps.store.transition(order.id, verdict === "settled" ? "paid" : "expired", {
-              from: "awaiting_payment",
-            });
-          } catch {
-            // Lost the compare-and-set: another poll already moved it. The
-            // current state is the answer, and no second transition happened.
-            order = deps.store.get(order.id) ?? order;
-          }
+          deps.store.claimSettlement(
+            order.id,
+            { quoteId: order.invoice.quoteId },
+            verdict === "settled" ? "paid" : "expired",
+          );
+          order = deps.store.get(order.id) ?? order;
         }
       }
 
@@ -303,6 +304,9 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       // The facilitator's own credential is NOT enough to claim sats arrived.
       // Without a rail verdict of `settled` this call cannot reach `paid`, so the
       // public API has no path into the paid state that skips the rail (ADR-0008).
+      // Even with the verdict, the state change goes through the SAME durable
+      // exactly-once claim the customer poll uses — so a console click and a poll
+      // racing each other cannot both pay one order, and neither can a restart.
       if (body.state === "paid") {
         const current = deps.store.get(transition[1]);
         if (!current) return json({ error: "not found" }, 404);
@@ -315,6 +319,28 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
               settlement: verdict,
             }, 402);
           }
+          if (!current.invoice) {
+            return json({
+              error: "refused: an order reaches paid only against a real invoice",
+              reason: "settlement_not_verified",
+              settlement: verdict,
+            }, 402);
+          }
+          const outcome = deps.store.claimSettlement(current.id, {
+            quoteId: current.invoice.quoteId,
+          });
+          if (outcome === "proof_spent") {
+            return json({
+              error: "refused: this payment request already settled another order",
+              reason: "settlement_proof_reused",
+            }, 409);
+          }
+          const settled = deps.store.get(current.id);
+          if (!settled?.invoice) return json({ error: "not found" }, 404);
+          // `lost` here means someone else applied the very same claim (the
+          // customer's poll, or another console tab). That is a success, not an
+          // error: report the order the winner committed.
+          return json(settled);
         }
       }
 
@@ -347,8 +373,8 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 
       const key = req.headers.get("idempotency-key")?.trim();
       if (key) {
-        const replayed = idempotency.get(key);
-        if (replayed) return json(replayed, 200, { "idempotency-replayed": "true" });
+        const replayed = replay(key);
+        if (replayed) return replayed;
       }
 
       const catalog = await catalogFor();
@@ -372,38 +398,47 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
         ? body.inputs as Record<string, unknown>
         : {};
       const id = crypto.randomUUID();
-      const order = deps.store.create(
-        id,
-        { venue_slug: priced.venue_slug, fulfilment: priced.fulfilment, items: priced.lines, inputs },
-        {
-          venue_slug: priced.venue_slug,
-          items: priced.lines,
-          subtotal: priced.subtotal,
-          fee: priced.fee,
-          total: priced.total,
-          fulfilment: priced.fulfilment,
-          inputs,
-        },
-      );
-
-      const response = {
-        id,
+      const payload = {
+        venue_slug: priced.venue_slug,
+        fulfilment: priced.fulfilment,
+        items: priced.lines,
+        inputs,
+      };
+      const money = {
+        venue_slug: priced.venue_slug,
+        items: priced.lines,
+        subtotal: priced.subtotal,
+        fee: priced.fee,
+        total: priced.total,
+        fulfilment: priced.fulfilment,
+        inputs,
+      };
+      // The response the PWA reads: the server-assigned id and the money the
+      // server itself computed. No invoice exists yet (it is created on the
+      // invoice endpoint), so there is no expiry to promise — the invoice call
+      // returns the real one.
+      const respond = (order: Order): Record<string, unknown> => ({
+        id: order.id,
         state: order.state,
         subtotal: order.subtotal,
         fee: order.fee,
         total: order.total,
-        // No invoice exists yet (it is created on the invoice endpoint), so there
-        // is no expiry to promise. The invoice call returns the real one.
         expires_at: null,
-      };
+      });
+
       if (key) {
-        if (idempotency.size >= IDEMPOTENCY_LIMIT) {
-          const oldest = idempotency.keys().next().value;
-          if (oldest !== undefined) idempotency.delete(oldest);
-        }
-        idempotency.set(key, response);
+        // Order + Idempotency-Key in one transaction: a double-tap creates one
+        // order, and a retry after a restart still gets the original.
+        const result = deps.store.createIdempotent(key, id, payload, money, respond);
+        return json(
+          result.response,
+          result.replayed ? 200 : 201,
+          result.replayed ? { "idempotency-replayed": "true" } : {},
+        );
       }
-      return json(response, 201);
+
+      const order = deps.store.create(id, payload, money);
+      return json(respond(order), 201);
     }
 
     return json({ error: "not found" }, 404);
@@ -411,15 +446,57 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 }
 
 /**
- * The service's own order store. Exported because the sweep has to reconcile the
- * SAME store the routes answer from — a wiring test drives this store, this route
- * and the sweep starter below, with no production-only branch anywhere.
+ * Where the orders live. Production MUST be a file: an in-memory store loses the
+ * invoice (so a restart re-quotes a second bolt11 for an order whose first one
+ * the customer already paid — stranded sats) and the settlement claim. A bare
+ * `deno run main.ts` therefore defaults to `data/orders.sqlite`.
+ *
+ * There is deliberately NO in-memory arm here. This used to be
+ * `orderDbPath(env, import.meta.main)` with a `:memory:` fallback for
+ * `isMain === false`, which meant any entrypoint that IMPORTED this file (rather
+ * than running it) silently got an ephemeral store — invisible in production,
+ * where the store and the settlement claim are the whole point. An import now
+ * gets the same durable default, and the suite injects its own store through
+ * `createRoute({ store })` instead of relying on a test-only branch.
  */
-export const store = new OrderStore();
-const challenges = new ChallengeStore();
+const DEFAULT_ORDER_DB_PATH = "data/orders.sqlite";
 
-function facilitatorPubkeyFromEnv(): string | null {
-  const raw = Deno.env.get("FACILITATOR_NPUB");
+/** The slice of `Deno.env` this module reads (tests pass a plain object). */
+export type EnvLike = { get(key: string): string | undefined };
+
+export function orderDbPath(env: EnvLike): string {
+  const raw = env.get("ORDER_DB_PATH");
+  return raw && raw.trim() ? raw.trim() : DEFAULT_ORDER_DB_PATH;
+}
+
+/**
+ * Make sure the parent directory of a durable store EXISTS before opening it.
+ *
+ * The default is a file (`data/orders.sqlite`), and a file needs its directory:
+ * `node:sqlite` answers a missing parent with "unable to open database file", so
+ * a bare `deno run main.ts` on a fresh checkout died before it served anything —
+ * the durable default was only ever true if something else had happened to create
+ * the directory. Creating it here makes "durable by default" a property of the
+ * service instead of a deployment convention.
+ *
+ * `:memory:` (what a test injects) and `file:` URIs have no directory to create,
+ * and a real failure (permissions, a path that is a file) still throws: this is
+ * `mkdir -p`, not a swallow.
+ */
+function ensureStoreDir(path: string): void {
+  if (path === ":memory:" || path.startsWith("file:")) return;
+  const cut = path.lastIndexOf("/");
+  if (cut < 0) return; // a bare filename lives in the cwd, which exists
+  const dir = path.slice(0, cut) || "/";
+  try {
+    Deno.mkdirSync(dir, { recursive: true });
+  } catch (error) {
+    if (!(error instanceof Deno.errors.AlreadyExists)) throw error;
+  }
+}
+
+function facilitatorPubkeyFromEnv(env: EnvLike): string | null {
+  const raw = env.get("FACILITATOR_NPUB");
   if (!raw) return null;
   try {
     return normalizePubkey(raw);
@@ -434,17 +511,37 @@ function facilitatorPubkeyFromEnv(): string | null {
 }
 
 /**
- * Module-level wiring: the rail is left `undefined` so it resolves from the
- * environment on first use (CASHU_MINT_URL, else the selected mint in
- * config/mint.json), exactly like `railFromEnv`/`resolveMintUrl` describe.
+ * The service's own wiring: ONE store, shared by the routes and the sweep, built
+ * explicitly when this file is the entrypoint.
+ *
+ * It is a function, not a module-level `const`, for one reason: a module-level
+ * store exists the moment anything imports this file, and the previous version
+ * resolved its path from `import.meta.main` — so an IMPORT silently selected the
+ * `:memory:` arm while `deno run main.ts` selected the file. That is a bug you
+ * cannot see in production and only discover after a restart has already
+ * stranded sats. Callers get the durable path, always; tests inject their own
+ * store through `createRoute({ store })` rather than borrowing a production
+ * branch.
+ *
+ * The rail is left `undefined` so it resolves from the environment on first use
+ * (CASHU_MINT_URL, else the selected mint in config/mint.json), exactly like
+ * `railFromEnv`/`resolveMintUrl` describe.
  */
-export const route = createRoute({
-  store,
-  challenges,
-  facilitatorPubkey: facilitatorPubkeyFromEnv(),
-  allowChallengeCredential: Deno.env.get("NIP98_STRICT") !== "1",
-  ...(Deno.env.get("CASHU_MINT_URL") ? { rail: railFromEnv(Deno.env) } : {}),
-});
+export function createService(
+  env: EnvLike = Deno.env,
+): { store: OrderStore; route: ReturnType<typeof createRoute> } {
+  const path = orderDbPath(env);
+  ensureStoreDir(path);
+  const store = new OrderStore({ path });
+  const route = createRoute({
+    store,
+    challenges: new ChallengeStore(),
+    facilitatorPubkey: facilitatorPubkeyFromEnv(env),
+    allowChallengeCredential: env.get("NIP98_STRICT") !== "1",
+    ...(env.get("CASHU_MINT_URL") ? { rail: railFromEnv(env) } : {}),
+  });
+  return { store, route };
+}
 
 export { CardMaterialRefused, serveOptions };
 
@@ -476,7 +573,10 @@ export function startOrderSweeper(
 if (import.meta.main) {
   // G1: the mint is asked on the SERVICE's clock, so `paid` no longer depends on
   // the customer's browser staying open. Same rail resolver as the routes, so a
-  // tick and a poll can never disagree about which mint they are talking to.
+  // tick and a poll can never disagree about which mint they are talking to —
+  // and the same store, so the sweep's settlement claim is the one the routes
+  // would have taken.
+  const { store, route } = createService();
   startOrderSweeper({ store, rail: createRailResolver({}) });
   serve(route, serveOptions(Deno.env));
 }

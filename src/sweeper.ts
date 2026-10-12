@@ -29,17 +29,26 @@
  * the log sink — so a test drives it deterministically and the service has no
  * test-only branch (`NODE_ENV` is never read here).
  */
-import type { Order, OrderState, TransitionMeta } from "./store.ts";
+import type { ClaimOutcome, Order, SettlementClaim } from "./store.ts";
 import type { PaymentRail, SettlementStatus } from "./rail.ts";
 
 /** Enabled by default at 30s; `ORDER_SWEEP_INTERVAL_MS=0` disables it. */
 export const DEFAULT_SWEEP_INTERVAL_MS = 30_000;
 
-/** The slice of the order store a sweep needs (so a test can count transitions). */
+/** The slice of the order store a sweep needs. */
 export interface SweeperStore {
   all(): Order[];
   get(id: string): Order | undefined;
-  transition(id: string, to: OrderState, meta?: TransitionMeta): Order;
+  /**
+   * THE settlement claim — the same one the poll (`GET /orders/:id`) and the
+   * console take (`OrderStore.claimSettlement`): one conditional UPDATE plus a
+   * single-use payment-request row inside one transaction.
+   *
+   * The sweep settles through this and NOT through a bare `transition()`. A
+   * transition would flip the order to `paid` while leaving the quote unspent,
+   * so the same payment could later settle a SECOND order through the poll path.
+   */
+  claimSettlement(id: string, claim: SettlementClaim, to?: "paid" | "expired"): ClaimOutcome;
 }
 
 export interface SweeperDeps {
@@ -69,6 +78,12 @@ export interface SweepReport {
   unchanged: number;
   /** Rail could not answer; left exactly as they were. */
   unavailable: number;
+  /**
+   * The rail said `settled`, but the claim was refused: this payment request
+   * already settled a DIFFERENT order. Not a race loser — a money anomaly (one
+   * payment must never pay two orders), so it is counted separately and logged.
+   */
+  reused: number;
 }
 
 export interface SweeperOptions {
@@ -99,18 +114,34 @@ function isPast(expiresAt: string, nowMs: number): boolean {
 }
 
 /**
- * Apply a verdict through the store's compare-and-set. Returns false when a
- * concurrent customer poll (or another tick) already moved the order: that is
- * the "exactly once" mechanism, not an error, and nothing is reported.
+ * Apply a rail verdict through THE settlement claim (see `SweeperStore`).
+ *
+ * `won` is the only outcome that changed anything. `lost` is a concurrent
+ * customer poll (or another tick) that claimed it first — that IS the
+ * exactly-once mechanism, not an error, and the loser writes nothing.
+ * `proof_spent` is NOT a race: this order's invoice already settled a different
+ * order. It is returned so the caller can count and log it instead of folding a
+ * money anomaly into "nothing to do".
  */
-function commit(store: SweeperStore, id: string, to: OrderState, log: (line: string) => void): boolean {
+function commit(
+  store: SweeperStore,
+  order: Order,
+  to: "paid" | "expired",
+  log: (line: string) => void,
+): ClaimOutcome {
+  const quoteId = order.invoice?.quoteId;
+  if (!quoteId) return "missing";
+  let outcome: ClaimOutcome;
   try {
-    store.transition(id, to, { from: "awaiting_payment" });
+    outcome = store.claimSettlement(order.id, { quoteId }, to);
   } catch {
-    return false;
+    // A store that throws is not a verdict: change nothing (fail-closed).
+    return "lost";
   }
-  log(`orders sweep: ${id} awaiting_payment -> ${to} (rail verdict)`);
-  return true;
+  if (outcome === "won") {
+    log(`orders sweep: ${order.id} awaiting_payment -> ${to} (rail verdict)`);
+  }
+  return outcome;
 }
 
 /**
@@ -123,7 +154,7 @@ function commit(store: SweeperStore, id: string, to: OrderState, log: (line: str
 export async function sweepOnce(deps: SweeperDeps): Promise<SweepReport> {
   const now = deps.now ?? Date.now;
   const log = deps.log ?? consoleLog;
-  const report: SweepReport = { checked: 0, paid: 0, expired: 0, unchanged: 0, unavailable: 0 };
+  const report: SweepReport = { checked: 0, paid: 0, expired: 0, unchanged: 0, unavailable: 0, reused: 0 };
 
   let candidates: Order[];
   try {
@@ -161,12 +192,15 @@ export async function sweepOnce(deps: SweeperDeps): Promise<SweepReport> {
     }
 
     if (verdict === "settled") {
-      if (commit(deps.store, order.id, "paid", log)) report.paid++;
+      const outcome = commit(deps.store, order, "paid", log);
+      if (outcome === "won") report.paid++;
+      else if (outcome === "proof_spent") report.reused++;
       else report.unchanged++;
       continue;
     }
     if (verdict === "expired" || isPast(invoice.expiresAt, now())) {
-      if (commit(deps.store, order.id, "expired", log)) report.expired++;
+      const outcome = commit(deps.store, order, "expired", log);
+      if (outcome === "won") report.expired++;
       else report.unchanged++;
       continue;
     }
@@ -177,6 +211,12 @@ export async function sweepOnce(deps: SweeperDeps): Promise<SweepReport> {
   // (nor hide the orders it is holding up).
   if (report.unavailable > 0) {
     log(`orders sweep: rail unreachable for ${report.unavailable} of ${report.checked} order(s); no state change (fail-closed)`);
+  }
+  // Louder than `unchanged`: the rail says this invoice was paid, but the claim
+  // was refused because that payment request already settled ANOTHER order. The
+  // sats cannot pay for two orders — a human has to look.
+  if (report.reused > 0) {
+    log(`orders sweep: ${report.reused} order(s) left alone — the payment request already settled a different order (proof already spent)`);
   }
   return report;
 }
