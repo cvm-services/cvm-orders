@@ -35,7 +35,19 @@ if [ "${SKIP_TESTS:-0}" = "1" ]; then
   echo "== 1/5 SKIP_TESTS=1 — not running the suite =="
 else
   echo "== 1/5 orders test suite =="
-  ( cd "$ORD" && ~/.local/bin/deno task test 2>&1 | grep -E "^ok \|" )
+  # Run in a subshell and grep AFTER the run finishes. Piping `deno task test`
+  # straight into `grep` can leave the pipe open on the coverage reporter and
+  # hang the whole script with no output — capture, then filter.
+  # NOTE: deno colours its summary (`\e[32mok\e[0m | …`), so strip ANSI before
+  # matching `^ok` — otherwise the guard never fires and every deploy aborts.
+  _testlog="$(cd "$ORD" && NO_COLOR=1 ~/.local/bin/deno task test 2>&1 || true)"
+  _plain="$(printf '%s' "$_testlog" | sed -E 's/\x1b\[[0-9;]*m//g')"
+  echo "$_plain" | grep -E "^ok \|" || true
+  if ! echo "$_plain" | grep -qE "^ok \| [0-9]+ passed.*\| 0 failed"; then
+    echo "ERROR: test suite not green — aborting deploy" >&2
+    echo "$_plain" | tail -20 >&2
+    exit 1
+  fi
 fi
 
 # --------------------------------------------------- 2. shape BEFORE
