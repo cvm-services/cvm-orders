@@ -4,8 +4,9 @@
     "source": "https://cvm-pwa.orangesync.tech/menu.json (the file the shipped PWA at /order/ fetches as ../menu.json)",
     "captured_at": "2026-10-12",
     "source_sha256": "6229cdd0111ba70db7d3e7ca8f90ded6fe71ce075c90e57f8bc536f0e660516f",
-    "how": "curl -sS https://cvm-pwa.orangesync.tech/menu.json | jq '{venues: [.venues[] | {venue_slug, name, items: [.items[] | {sku, name, prices_by_order_method, available}]}]}'",
-    "note": "That file is itself a live capture of each venue CVM's `menu` tool result (see its own _provenance). Regenerate this copy when the upstream menu changes; do not hand-edit prices."
+    "how": "curl -sS https://cvm-pwa.orangesync.tech/menu.json | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
+    "regenerate": "bash scripts/cvm-deploy-catalog.sh  (in cvm-orders)",
+    "note": "Prices are mirror-captured from the venue CVMs' live menu events; if a venue menu changes, re-run the deploy script rather than editing this file."
   },
   "sats_per_eur": 1000,
   "_rate_note": "1 EUR = 1000 sats, matching the shipped PWA's own display rate (app.js: `sats = n => Math.round(n * 1000)`). Override with SATS_PER_EUR in the service env.",

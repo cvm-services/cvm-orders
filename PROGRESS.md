@@ -22,3 +22,7 @@ red-2-behavioural.txt, green-sweeper-unit.txt, full-suite.txt, deno-check.txt).
 RESUME NOTE: if this branch is picked up again, the only thing deliberately left unproven is
 behaviour against a REAL mint — see "What this does NOT prove" in REPORT.md. Nothing here is durable
 (the store is in-memory) and the sweep assumes one process per store.
+
+## 2026-10-12
+- cvm-deploy-catalog.sh: one-command menu change (capture->catalog->tests->deploy->probe). Proven: 2x idempotent run, probe order priced 15120 sats.
+- cvm-record-pay-video.py: deterministic pay-flow recorder + regression test. Proven: full flow green, invoice rendered.
