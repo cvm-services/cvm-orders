@@ -190,12 +190,35 @@ Run behind the existing reverse proxy as a systemd service, bind localhost, and 
 `FACILITATOR_NPUB` in an environment file (`cvm-registry` `deploy/orders-setup.sh`). Set
 `CASHU_MINT_URL` to a mint that passed `scripts/discover-mints.ts` (see
 [docs/mint-discovery.md](docs/mint-discovery.md)); without it the invoice endpoint answers 503 and
-the PWA's Pay button cannot complete a payment. Persist the
-store behind the next database adapter before production; this in-memory implementation is for the
-working demo only — a restart empties the queue, and receipts live no longer than the process.
+the PWA's Pay button cannot complete a payment.
+
+The order store is **durable** (SQLite via `node:sqlite`, WAL): `claimSettlement()` moves an order
+`awaiting_payment -> paid` exactly once, atomically, across process restarts, and the queue survives
+a redeploy. Set `ORDER_DB_PATH` to place the database file (default `data/orders.sqlite` under the
+working directory; the live host uses `/var/lib/cvm-orders/orders.sqlite`).
 
 Live deployment (2026-10-10): `/opt/tollgate/cvm-orders` on the PWA host, unit `cvm-orders.service`,
 `EnvironmentFile=/etc/cvm-orders/config.env` (`FACILITATOR_NPUB`, `PORT=8788`). Caddy on the same
 host serves `cvm-pwa.orangesync.tech` and strips `/api/*` onto `127.0.0.1:8788`, so both PWAs call
 `/api/...` on their own origin. `BIND_ADDR` defaults to `127.0.0.1`; setting it to `0.0.0.0` exposes
 an unauthenticated store to the network.
+
+## Mirror on Nostr (ngit)
+
+This repository is mirrored to **ngit** — git hosting on Nostr. The mirror carries
+the default branch (`main`), so the whole repository is reachable without GitHub.
+
+Clone it over Nostr (the `nostr://` remote speaks the ngit protocol):
+
+```bash
+git clone nostr://npub1nng5mxkdh2mu593twukfr7j3fk5wxfy0v8ujf0e5g8nwwtzlphhqksqpew/relay.ngit.dev/cvm-orders
+git clone https://relay.ngit.dev/npub1nng5mxkdh2mu593twukfr7j3fk5wxfy0v8ujf0e5g8nwwtzlphhqksqpew/cvm-orders.git
+git clone https://gitnostr.com/npub1nng5mxkdh2mu593twukfr7j3fk5wxfy0v8ujf0e5g8nwwtzlphhqksqpew/cvm-orders.git
+```
+
+- **Browse / open PRs:** https://gitworkshop.dev/npub1nng5mxkdh2mu593twukfr7j3fk5wxfy0v8ujf0e5g8nwwtzlphhqksqpew/relay.ngit.dev/cvm-orders
+- **Announcement (source of truth for the URLs above):** kind `30617`,
+  `d=cvm-orders`, by `9cd14d9acdbab7ca162b772c91fa514da8e3248f61f924bf3441e6e72c5f0dee`,
+  relays: `wss://relay.ngit.dev wss://gitnostr.com`
+- This repo has **no ngit CI** (`.ngit/act/workflows/` is absent) — GitHub Actions is the
+  build of record.
