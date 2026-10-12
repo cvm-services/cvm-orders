@@ -2,8 +2,8 @@
   "_provenance": {
     "what": "Server-side venue catalog used to recompute every order price (ADR-0008: never trust a client amount).",
     "source": "https://cvm-pwa.orangesync.tech/menu.json (the file the shipped PWA at /order/ fetches as ../menu.json)",
-    "captured_at": "2026-10-10",
-    "source_sha256": "0a04394395b338e5e483d29a27733729c4900d25c7cb15abb3d3bf3a49852cd7",
+    "captured_at": "2026-10-12",
+    "source_sha256": "6229cdd0111ba70db7d3e7ca8f90ded6fe71ce075c90e57f8bc536f0e660516f",
     "how": "curl -sS https://cvm-pwa.orangesync.tech/menu.json | jq '{venues: [.venues[] | {venue_slug, name, items: [.items[] | {sku, name, prices_by_order_method, available}]}]}'",
     "note": "That file is itself a live capture of each venue CVM's `menu` tool result (see its own _provenance). Regenerate this copy when the upstream menu changes; do not hand-edit prices."
   },
@@ -16,6 +16,1112 @@
   },
   "_option_note": "Mirrored from the shipped client (app.js: Bacon .15, Jalapeños .09, Extra cheese .12 EUR). The venue CVMs' option_group_ids are not priced in the captured menu, so a client-sent option token that is not in this table is recorded but charged nothing; see REPORT.md 'what this does NOT prove'.",
   "venues": [
+    {
+      "venue_slug": "three-buddies-berlin",
+      "name": "Three Buddies Steglitz",
+      "items": [
+        {
+          "sku": "1052475",
+          "name": "Cheeseburger Menü",
+          "prices_by_order_method": {
+            "delivery": 15,
+            "dine_in": 14,
+            "pickup": 14,
+            "room_service": 14
+          },
+          "available": true
+        },
+        {
+          "sku": "1052454",
+          "name": "Texas Burger",
+          "prices_by_order_method": {
+            "delivery": 9.3,
+            "dine_in": 8.3,
+            "pickup": 8.3,
+            "room_service": 8.3
+          },
+          "available": true
+        },
+        {
+          "sku": "1052491",
+          "name": "Curly Fries (vegan)",
+          "prices_by_order_method": {
+            "delivery": 5.5,
+            "dine_in": 4.5,
+            "pickup": 4.5,
+            "room_service": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052566",
+          "name": "New Jersey Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 9.5,
+            "pickup": 9.5,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052545",
+          "name": "Chicken Wings",
+          "prices_by_order_method": {
+            "delivery": 7.9,
+            "dine_in": 6.9,
+            "pickup": 6.9,
+            "room_service": 6.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052526",
+          "name": "Texas Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15.8,
+            "dine_in": 14.8,
+            "pickup": 14.8,
+            "room_service": 14.8
+          },
+          "available": true
+        },
+        {
+          "sku": "1052511",
+          "name": "Chili Cheese Nuggets",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 6.5,
+            "pickup": 6.5,
+            "room_service": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052524",
+          "name": "Hamburger",
+          "prices_by_order_method": {
+            "delivery": 7.9,
+            "dine_in": 6.9,
+            "pickup": 6.9,
+            "room_service": 6.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052440",
+          "name": "Cheeseburger",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 7.5,
+            "pickup": 7.5,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052487",
+          "name": "Mexicali Burger (scharf)",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 7.9,
+            "pickup": 7.9,
+            "room_service": 7.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052550",
+          "name": "Indiana Burger",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 7.9,
+            "pickup": 7.9,
+            "room_service": 7.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052459",
+          "name": "Miami Burger",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 7.9,
+            "pickup": 7.9,
+            "room_service": 7.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052449",
+          "name": "Blue Cheese Burger",
+          "prices_by_order_method": {
+            "delivery": 9.9,
+            "dine_in": 8.9,
+            "pickup": 8.9,
+            "room_service": 8.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052473",
+          "name": "Portobello Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 9.5,
+            "pickup": 9.5,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052458",
+          "name": "Manhatten Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 9.5,
+            "pickup": 9.5,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052455",
+          "name": "Three Buddies Burger",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052509",
+          "name": "Crispy Chicken Burger",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 8.5,
+            "pickup": 8.5,
+            "room_service": 8.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052557",
+          "name": "Hamburger Menü",
+          "prices_by_order_method": {
+            "delivery": 14.4,
+            "dine_in": 13.4,
+            "pickup": 13.4,
+            "room_service": 13.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052472",
+          "name": "Mexicali Burger Menü (scharf)",
+          "prices_by_order_method": {
+            "delivery": 15.4,
+            "dine_in": 14.4,
+            "pickup": 14.4,
+            "room_service": 14.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052548",
+          "name": "Indiana Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15.4,
+            "dine_in": 14.4,
+            "pickup": 14.4,
+            "room_service": 14.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052447",
+          "name": "Miami Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15.4,
+            "dine_in": 14.4,
+            "pickup": 14.4,
+            "room_service": 14.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052448",
+          "name": "New Jersey Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 17,
+            "dine_in": 16,
+            "pickup": 16,
+            "room_service": 16
+          },
+          "available": true
+        },
+        {
+          "sku": "1052508",
+          "name": "Blue Cheeseburger Menü",
+          "prices_by_order_method": {
+            "delivery": 16.4,
+            "dine_in": 15.4,
+            "pickup": 15.4,
+            "room_service": 15.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052519",
+          "name": "Portobello Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 17,
+            "dine_in": 16,
+            "pickup": 16,
+            "room_service": 16
+          },
+          "available": true
+        },
+        {
+          "sku": "1052488",
+          "name": "Manhatten Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 17,
+            "dine_in": 16,
+            "pickup": 16,
+            "room_service": 16
+          },
+          "available": true
+        },
+        {
+          "sku": "1052544",
+          "name": "Three Buddies Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 18.4,
+            "dine_in": 17.4,
+            "pickup": 17.4,
+            "room_service": 17.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052452",
+          "name": "Veggie Falafel Burger",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 7.5,
+            "pickup": 7.5,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052510",
+          "name": "Veggie Halloumi Burger",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 7.5,
+            "pickup": 7.5,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052442",
+          "name": "Veggie Gemüse Burger",
+          "prices_by_order_method": {
+            "delivery": 8.5,
+            "dine_in": 7.5,
+            "pickup": 7.5,
+            "room_service": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052502",
+          "name": "Veggie Beyond Meat Burger",
+          "prices_by_order_method": {
+            "delivery": 9.9,
+            "dine_in": 8.9,
+            "pickup": 8.9,
+            "room_service": 8.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052552",
+          "name": "Veggie Mexicali Burger",
+          "prices_by_order_method": {
+            "delivery": 10.5,
+            "dine_in": 9.5,
+            "pickup": 9.5,
+            "room_service": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052530",
+          "name": "Three Buddies Veggie",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052549",
+          "name": "Veggi Falafel Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15,
+            "dine_in": 14,
+            "pickup": 14,
+            "room_service": 14
+          },
+          "available": true
+        },
+        {
+          "sku": "1052463",
+          "name": "Veggi Halloumi Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15,
+            "dine_in": 14,
+            "pickup": 14,
+            "room_service": 14
+          },
+          "available": true
+        },
+        {
+          "sku": "1052514",
+          "name": "Veggi Gemüse Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 15,
+            "dine_in": 14,
+            "pickup": 14,
+            "room_service": 14
+          },
+          "available": true
+        },
+        {
+          "sku": "1052504",
+          "name": "Veggi Beyond Meat Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 16.4,
+            "dine_in": 15.4,
+            "pickup": 15.4,
+            "room_service": 15.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052529",
+          "name": "Veggi Mexicali Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 17,
+            "dine_in": 16,
+            "pickup": 16,
+            "room_service": 16
+          },
+          "available": true
+        },
+        {
+          "sku": "1052516",
+          "name": "Three Buddies Burger Menü",
+          "prices_by_order_method": {
+            "delivery": 18.4,
+            "dine_in": 17.4,
+            "pickup": 17.4,
+            "room_service": 17.4
+          },
+          "available": true
+        },
+        {
+          "sku": "1052478",
+          "name": "Hot Dog Classic",
+          "prices_by_order_method": {
+            "delivery": 4.9,
+            "dine_in": 3.9,
+            "pickup": 3.9,
+            "room_service": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052446",
+          "name": "Hot Dog Americana",
+          "prices_by_order_method": {
+            "delivery": 5.5,
+            "dine_in": 4.5,
+            "pickup": 4.5,
+            "room_service": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052445",
+          "name": "Hot Dog Mexicali (scharf)",
+          "prices_by_order_method": {
+            "delivery": 5.9,
+            "dine_in": 4.9,
+            "pickup": 4.9,
+            "room_service": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052461",
+          "name": "Currywurst (Halal)",
+          "prices_by_order_method": {
+            "delivery": 6.5,
+            "dine_in": 5.5,
+            "pickup": 5.5,
+            "room_service": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052551",
+          "name": "Hot Dog Classic Menü",
+          "prices_by_order_method": {
+            "delivery": 15.3,
+            "dine_in": 14.3,
+            "pickup": 14.3,
+            "room_service": 14.3
+          },
+          "available": true
+        },
+        {
+          "sku": "1052464",
+          "name": "Hot Dog Americana Menü",
+          "prices_by_order_method": {
+            "delivery": 15.9,
+            "dine_in": 14.9,
+            "pickup": 14.9,
+            "room_service": 14.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052520",
+          "name": "Hot Dog Mexicali Menü (scharf)",
+          "prices_by_order_method": {
+            "delivery": 16.3,
+            "dine_in": 15.3,
+            "pickup": 15.3,
+            "room_service": 15.3
+          },
+          "available": true
+        },
+        {
+          "sku": "1052477",
+          "name": "Currywurst Menü",
+          "prices_by_order_method": {
+            "delivery": 13,
+            "dine_in": 12,
+            "pickup": 12,
+            "room_service": 12
+          },
+          "available": true
+        },
+        {
+          "sku": "1052451",
+          "name": "Pommes frites (vegan)",
+          "prices_by_order_method": {
+            "delivery": 5.5,
+            "dine_in": 4.5,
+            "pickup": 4.5,
+            "room_service": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052517",
+          "name": "Wedges (vegan)",
+          "prices_by_order_method": {
+            "delivery": 5.5,
+            "dine_in": 4.5,
+            "pickup": 4.5,
+            "room_service": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052542",
+          "name": "Sweet Potatoes (vegan)",
+          "prices_by_order_method": {
+            "delivery": 6.9,
+            "dine_in": 5.9,
+            "pickup": 5.9,
+            "room_service": 5.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052482",
+          "name": "Chili Cheese Pommes",
+          "prices_by_order_method": {
+            "delivery": 6.9,
+            "dine_in": 5.9,
+            "pickup": 5.9,
+            "room_service": 5.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052562",
+          "name": "Onion Rings",
+          "prices_by_order_method": {
+            "delivery": 5.9,
+            "dine_in": 4.9,
+            "pickup": 4.9,
+            "room_service": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052506",
+          "name": "Chicken Nuggets",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 6.5,
+            "pickup": 6.5,
+            "room_service": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052497",
+          "name": "Broccoli Nuggets (6 Stück)",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 6.5,
+            "pickup": 6.5,
+            "room_service": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052536",
+          "name": "Mozzarella-Sticks",
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "dine_in": 6.5,
+            "pickup": 6.5,
+            "room_service": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052523",
+          "name": "Pasta Pollo",
+          "prices_by_order_method": {
+            "delivery": 12.9,
+            "dine_in": 11.9,
+            "pickup": 11.9,
+            "room_service": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052534",
+          "name": "Pasta Napoli",
+          "prices_by_order_method": {
+            "delivery": 10.9,
+            "dine_in": 9.9,
+            "pickup": 9.9,
+            "room_service": 9.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052481",
+          "name": "Pasta Gorgonzola",
+          "prices_by_order_method": {
+            "delivery": 12.9,
+            "dine_in": 11.9,
+            "pickup": 11.9,
+            "room_service": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052441",
+          "name": "Pasta Carbonara",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052457",
+          "name": "Arrabiata - pikant",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052469",
+          "name": "Pasta Veggie",
+          "prices_by_order_method": {
+            "delivery": 12.9,
+            "dine_in": 11.9,
+            "pickup": 11.9,
+            "room_service": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052513",
+          "name": "Aglio E Olio",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052498",
+          "name": "Salat Mista",
+          "prices_by_order_method": {
+            "delivery": 8.9,
+            "dine_in": 7.9,
+            "pickup": 7.9,
+            "room_service": 7.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052543",
+          "name": "Rucola-Salat",
+          "prices_by_order_method": {
+            "delivery": 9.5,
+            "dine_in": 8.5,
+            "pickup": 8.5,
+            "room_service": 8.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052496",
+          "name": "Salat Tonno",
+          "prices_by_order_method": {
+            "delivery": 11.9,
+            "dine_in": 10.9,
+            "pickup": 10.9,
+            "room_service": 10.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052546",
+          "name": "Salat Chicken",
+          "prices_by_order_method": {
+            "delivery": 12.9,
+            "dine_in": 11.9,
+            "pickup": 11.9,
+            "room_service": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052495",
+          "name": "Ketchup",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.5,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052480",
+          "name": "Mayonnaise",
+          "prices_by_order_method": {
+            "delivery": 1.6,
+            "dine_in": 1.6,
+            "pickup": 1.6,
+            "room_service": 1.6
+          },
+          "available": true
+        },
+        {
+          "sku": "1052485",
+          "name": "Barbecuesauce",
+          "prices_by_order_method": {
+            "delivery": 1.7,
+            "dine_in": 1.7,
+            "pickup": 1.7,
+            "room_service": 1.7
+          },
+          "available": true
+        },
+        {
+          "sku": "1052443",
+          "name": "Guacamole",
+          "prices_by_order_method": {
+            "delivery": 1.7,
+            "dine_in": 1.7,
+            "pickup": 1.7,
+            "room_service": 1.7
+          },
+          "available": true
+        },
+        {
+          "sku": "1052560",
+          "name": "Chili-Cheese-Dip",
+          "prices_by_order_method": {
+            "delivery": 1.9,
+            "dine_in": 1.9,
+            "pickup": 1.9,
+            "room_service": 1.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052564",
+          "name": "Sour Cream",
+          "prices_by_order_method": {
+            "delivery": 2.1,
+            "dine_in": 2.1,
+            "pickup": 2.1,
+            "room_service": 2.1
+          },
+          "available": true
+        },
+        {
+          "sku": "1052558",
+          "name": "Knoblauch-Aioli",
+          "prices_by_order_method": {
+            "delivery": 2.1,
+            "dine_in": 2.1,
+            "pickup": 2.1,
+            "room_service": 2.1
+          },
+          "available": true
+        },
+        {
+          "sku": "1052492",
+          "name": "Fuze Tea Schwarzer Tee Pfirsich 0,4l (EINWEG)",
+          "prices_by_order_method": {
+            "delivery": 3.2,
+            "dine_in": 3.2,
+            "pickup": 3.2,
+            "room_service": 3.2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052540",
+          "name": "Fuze Tea Grüner Tee Mango Kamille 0,4l (EINWEG)",
+          "prices_by_order_method": {
+            "delivery": 2.95,
+            "dine_in": 2.95,
+            "pickup": 2.95,
+            "room_service": 2.95
+          },
+          "available": true
+        },
+        {
+          "sku": "1052444",
+          "name": "Fuze Tea Grüner Tee Limette Minze 0,4l (EINWEG)",
+          "prices_by_order_method": {
+            "delivery": 2.95,
+            "dine_in": 2.95,
+            "pickup": 2.95,
+            "room_service": 2.95
+          },
+          "available": true
+        },
+        {
+          "sku": "1052535",
+          "name": "Fuze Tea Schwarzer Tee Zitrone 0,4l (EINWEG)",
+          "prices_by_order_method": {
+            "delivery": 2.95,
+            "dine_in": 2.95,
+            "pickup": 2.95,
+            "room_service": 2.95
+          },
+          "available": true
+        },
+        {
+          "sku": "1052539",
+          "name": "Fuze Tea Schwarzer Tee Pfirsich Hibiskus 0,4l (EINWEG)",
+          "prices_by_order_method": {
+            "delivery": 2.95,
+            "dine_in": 2.95,
+            "pickup": 2.95,
+            "room_service": 2.95
+          },
+          "available": true
+        },
+        {
+          "sku": "1052476",
+          "name": "Istanbul-Cola 0,50l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052471",
+          "name": "Uludağ Gazoz Zuckerfrei 0,50l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052537",
+          "name": "Sariyer-Cola 0,50l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052456",
+          "name": "Fritz Orange 0,33l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052499",
+          "name": "Fritz Misch Masch 0,33l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052532",
+          "name": "Sariyer Gazoz 0,50l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052479",
+          "name": "Cola Turka 0,50l",
+          "prices_by_order_method": {
+            "delivery": 2.2,
+            "dine_in": 2.2,
+            "pickup": 2.2,
+            "room_service": 2.2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052465",
+          "name": "Uludag Gazoz 0,50l",
+          "prices_by_order_method": {
+            "delivery": 2.9,
+            "dine_in": 2.9,
+            "pickup": 2.9,
+            "room_service": 2.9
+          },
+          "available": true
+        },
+        {
+          "sku": "1052474",
+          "name": "Red Bull 0,25l",
+          "prices_by_order_method": {
+            "delivery": 3.25,
+            "dine_in": 3.25,
+            "pickup": 3.25,
+            "room_service": 3.25
+          },
+          "available": true
+        },
+        {
+          "sku": "1052533",
+          "name": "Spree Quell still 0,5l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.25,
+            "dine_in": 2.25,
+            "pickup": 2.25,
+            "room_service": 2.25
+          },
+          "available": true
+        },
+        {
+          "sku": "1052505",
+          "name": "Spree Quell medium 0,5l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.5,
+            "dine_in": 2.5,
+            "pickup": 2.5,
+            "room_service": 2.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052531",
+          "name": "Spree Quell spritzig 0,5l (Einweg)",
+          "prices_by_order_method": {
+            "delivery": 2.25,
+            "dine_in": 2.25,
+            "pickup": 2.25,
+            "room_service": 2.25
+          },
+          "available": true
+        },
+        {
+          "sku": "1052462",
+          "name": "Durstlöscher Eistee Zitrone 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052500",
+          "name": "Durstlöscher Sauerkirsch Zitrone 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052450",
+          "name": "Durstlöscher Eistee Mango 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052486",
+          "name": "Durstlöscher Multivitamin 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052553",
+          "name": "Durstlöscher Eistee Pfirsich 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052470",
+          "name": "Durstlöscher Blueberry Marshmallow 0,5l",
+          "prices_by_order_method": {
+            "delivery": 2,
+            "dine_in": 2,
+            "pickup": 2,
+            "room_service": 2
+          },
+          "available": true
+        },
+        {
+          "sku": "1052503",
+          "name": "Capri Sun Orange 0,2l",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.5,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052489",
+          "name": "Capri Sun Multivitamin 0,2l",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.5,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052466",
+          "name": "Capri Sun Kirsche 0,2l",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.5,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052490",
+          "name": "Capri Sun Lemon 0,2l",
+          "prices_by_order_method": {
+            "delivery": 1.5,
+            "dine_in": 1.5,
+            "pickup": 1.5,
+            "room_service": 1.5
+          },
+          "available": true
+        },
+        {
+          "sku": "1052538",
+          "name": "7Gün Ayran 0,2l",
+          "prices_by_order_method": {
+            "delivery": 2.2,
+            "dine_in": 2.2,
+            "pickup": 2.2,
+            "room_service": 2.2
+          },
+          "available": true
+        }
+      ]
+    },
     {
       "venue_slug": "doppelt-kaese-berlin",
       "name": "Doppelt Käse Laubacher Straße",
@@ -101,10 +1207,10 @@
           "sku": "331267",
           "name": "Sweet Dreams",
           "prices_by_order_method": {
-            "delivery": 8.0,
-            "dine_in": 8.0,
+            "delivery": 8,
+            "dine_in": 8,
             "pickup": 7.2,
-            "room_service": 8.0
+            "room_service": 8
           },
           "available": true
         },
@@ -268,7 +1374,7 @@
           "prices_by_order_method": {
             "delivery": 6.5,
             "dine_in": 6.5,
-            "pickup": 6.0,
+            "pickup": 6,
             "room_service": 6.5
           },
           "available": true
@@ -277,10 +1383,10 @@
           "sku": "334622",
           "name": "Chicken Wings 9 Stück",
           "prices_by_order_method": {
-            "delivery": 9.0,
-            "dine_in": 9.0,
+            "delivery": 9,
+            "dine_in": 9,
             "pickup": 8.5,
-            "room_service": 9.0
+            "room_service": 9
           },
           "available": true
         },
@@ -288,10 +1394,10 @@
           "sku": "334623",
           "name": "Chicken Wings 12 Stück",
           "prices_by_order_method": {
-            "delivery": 11.0,
-            "dine_in": 11.0,
+            "delivery": 11,
+            "dine_in": 11,
             "pickup": 10.5,
-            "room_service": 11.0
+            "room_service": 11
           },
           "available": true
         },
@@ -301,7 +1407,7 @@
           "prices_by_order_method": {
             "delivery": 9.9,
             "dine_in": 9.9,
-            "pickup": 9.0,
+            "pickup": 9,
             "room_service": 9.9
           },
           "available": false
@@ -312,7 +1418,7 @@
           "prices_by_order_method": {
             "delivery": 11.9,
             "dine_in": 11.9,
-            "pickup": 11.0,
+            "pickup": 11,
             "room_service": 11.9
           },
           "available": false
@@ -321,10 +1427,10 @@
           "sku": "331240",
           "name": "Onion Rings 6 Stück",
           "prices_by_order_method": {
-            "delivery": 7.0,
-            "dine_in": 7.0,
+            "delivery": 7,
+            "dine_in": 7,
             "pickup": 6.3,
-            "room_service": 7.0
+            "room_service": 7
           },
           "available": true
         },
@@ -334,7 +1440,7 @@
           "prices_by_order_method": {
             "delivery": 9.5,
             "dine_in": 9.5,
-            "pickup": 9.0,
+            "pickup": 9,
             "room_service": 9.5
           },
           "available": true
@@ -343,10 +1449,10 @@
           "sku": "334627",
           "name": "Onion Rings 18 Stück",
           "prices_by_order_method": {
-            "delivery": 13.0,
-            "dine_in": 13.0,
+            "delivery": 13,
+            "dine_in": 13,
             "pickup": 12.5,
-            "room_service": 13.0
+            "room_service": 13
           },
           "available": true
         },
@@ -365,10 +1471,10 @@
           "sku": "331241",
           "name": "Caesar-Salat",
           "prices_by_order_method": {
-            "delivery": 9.0,
-            "dine_in": 9.0,
+            "delivery": 9,
+            "dine_in": 9,
             "pickup": 8.1,
-            "room_service": 9.0
+            "room_service": 9
           },
           "available": true
         },
@@ -442,10 +1548,10 @@
           "sku": "331248",
           "name": "Burgersoße",
           "prices_by_order_method": {
-            "delivery": 1.0,
-            "dine_in": 1.0,
+            "delivery": 1,
+            "dine_in": 1,
             "pickup": 0.9,
-            "room_service": 1.0
+            "room_service": 1
           },
           "available": true
         },
@@ -497,10 +1603,10 @@
           "sku": "331253",
           "name": "Barbecuesoße",
           "prices_by_order_method": {
-            "delivery": 1.0,
-            "dine_in": 1.0,
+            "delivery": 1,
+            "dine_in": 1,
             "pickup": 0.9,
-            "room_service": 1.0
+            "room_service": 1
           },
           "available": true
         },
@@ -508,10 +1614,10 @@
           "sku": "331254",
           "name": "Käsesoße",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.7,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -519,10 +1625,10 @@
           "sku": "331255",
           "name": "Sour Cream",
           "prices_by_order_method": {
-            "delivery": 1.0,
-            "dine_in": 1.0,
+            "delivery": 1,
+            "dine_in": 1,
             "pickup": 0.9,
-            "room_service": 1.0
+            "room_service": 1
           },
           "available": true
         },
@@ -530,10 +1636,10 @@
           "sku": "331256",
           "name": "Süß-Sauer-Soße",
           "prices_by_order_method": {
-            "delivery": 1.0,
-            "dine_in": 1.0,
+            "delivery": 1,
+            "dine_in": 1,
             "pickup": 0.9,
-            "room_service": 1.0
+            "room_service": 1
           },
           "available": true
         },
@@ -574,10 +1680,10 @@
           "sku": "331270",
           "name": "Club Mate 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -585,10 +1691,10 @@
           "sku": "331271",
           "name": "Coca-Cola® 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -618,10 +1724,10 @@
           "sku": "331274",
           "name": "Coca-Cola® Zero 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -629,10 +1735,10 @@
           "sku": "331275",
           "name": "Fanta 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -651,10 +1757,10 @@
           "sku": "331278",
           "name": "Mezzo Mix 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -673,10 +1779,10 @@
           "sku": "331281",
           "name": "Vio Schorle Apfel 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": false
         },
@@ -684,10 +1790,10 @@
           "sku": "331282",
           "name": "Sprite 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.9,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": false
         },
@@ -739,10 +1845,10 @@
           "sku": "331290",
           "name": "Rixdorfer Fassbrause 0,33 l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.7,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -750,10 +1856,10 @@
           "sku": "369054",
           "name": "Ice Tea Peach 0.33l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.7,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": true
         },
@@ -761,10 +1867,10 @@
           "sku": "369055",
           "name": "Ice Tea Lemon Sparkling 0.33l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.7,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": false
         },
@@ -772,10 +1878,10 @@
           "sku": "369056",
           "name": "Ice Tea Pineapple Mango 0,33l",
           "prices_by_order_method": {
-            "delivery": 3.0,
-            "dine_in": 3.0,
+            "delivery": 3,
+            "dine_in": 3,
             "pickup": 2.7,
-            "room_service": 3.0
+            "room_service": 3
           },
           "available": false
         },
@@ -851,7 +1957,7 @@
           "prices_by_order_method": {
             "delivery": 9.9,
             "dine_in": 9.9,
-            "pickup": 9.0,
+            "pickup": 9,
             "room_service": 9.9
           },
           "available": false
@@ -1130,7 +2236,7 @@
           "sku": "13",
           "name": "Gemischter Salat",
           "prices_by_order_method": {
-            "pickup": 9.0
+            "pickup": 9
           },
           "available": true
         },
@@ -1218,7 +2324,7 @@
           "sku": "18",
           "name": "Insalata di Rucola",
           "prices_by_order_method": {
-            "pickup": 9.0
+            "pickup": 9
           },
           "available": true
         },
