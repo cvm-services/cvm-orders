@@ -281,7 +281,16 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       // The persisted venue receipt is part of the order from `placed` onward and
       // is returned here; it holds no card material (assertNoCardMaterial refused
       // it on the way in — ADR-0013).
-      return json(order);
+      //
+      // ADR-0014: the customer surface carries the venue's OWN order number as a
+      // top-level field, alongside the facilitator's sats reference (`id`). It is
+      // `null` until a facilitator records the venue confirmation, and it is read
+      // from the DURABLE receipt — so it survives a restart and is never invented.
+      return json({
+        ...order,
+        venue_reference: order.receipt?.venue_reference ?? null,
+        venue_reference_url: null,
+      });
     }
 
     if (match && req.method === "POST" && url.pathname.endsWith("/transition")) {
