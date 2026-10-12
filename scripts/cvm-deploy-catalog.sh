@@ -40,10 +40,11 @@ if [ "${#@}" -gt 0 ]; then
   CTXVM_RELAYS="$RELAY" python3 "$REG/tools/capture_menu.py" "${VEN_ARGS[@]}" \
     --out "$REG/site/menu.json"
 else
+  # No explicit --venue: capture_menu.py auto-discovers every venue under
+  # contextvm-services/venues/ and reports any that is not answering. A hardcoded
+  # list here silently dropped onboarded venues (chandi-berlin, 167 items, sat
+  # unserved for exactly that reason).
   CTXVM_RELAYS="$RELAY" python3 "$REG/tools/capture_menu.py" \
-    --venue three-buddies-berlin \
-    --venue doppelt-kaese-berlin \
-    --venue pizza-e-pasta-ruedesheimerplatz \
     --out "$REG/site/menu.json"
 fi
 
