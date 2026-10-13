@@ -3,7 +3,7 @@
     "what": "Server-side venue catalog used to recompute every order price (ADR-0008: never trust a client amount).",
     "source": "https://cvm-pwa.orangesync.tech/menu.json (deployed by scripts/cvm-deploy-catalog.sh; the file the shipped PWA at /order/ fetches as ../menu.json)",
     "captured_at": "2026-10-13",
-    "source_sha256": "fcc8ad036dbd885eacaa36266d91de746debb9cb1a45e0ac80c9c6e0c23b73a8",
+    "source_sha256": "db89b8fe82d64272cfebd0301bb76e17cd1b8bf05e1752def1c1e813e12e93fc",
     "sha256_note": "sha256 of the captured menu.json this catalog was generated from; step 5 of the deploy script asserts the deployed file matches.",
     "how": "tools/capture_menu.py (live ContextVM round trip) | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
     "regenerate": "bash scripts/cvm-deploy-catalog.sh  (in cvm-orders)",
@@ -3947,160 +3947,6 @@
       "name": "Ristorante Matera",
       "items": [
         {
-          "sku": "422081",
-          "name": "Pizza Margherita",
-          "prices_by_order_method": {
-            "delivery": 9,
-            "dine_in": 9,
-            "pickup": 9,
-            "room_service": 9
-          },
-          "available": true
-        },
-        {
-          "sku": "422082",
-          "name": "Pizza Salame",
-          "prices_by_order_method": {
-            "delivery": 11,
-            "dine_in": 11,
-            "pickup": 11,
-            "room_service": 11
-          },
-          "available": true
-        },
-        {
-          "sku": "422086",
-          "name": "Pizza Matera",
-          "prices_by_order_method": {
-            "delivery": 14.5,
-            "dine_in": 14.5,
-            "pickup": 14.5,
-            "room_service": 14.5
-          },
-          "available": true
-        },
-        {
-          "sku": "422084",
-          "name": "Pizza Calabrese (pikant)",
-          "prices_by_order_method": {
-            "delivery": 13,
-            "dine_in": 13,
-            "pickup": 13,
-            "room_service": 13
-          },
-          "available": true
-        },
-        {
-          "sku": "422085",
-          "name": "Pizza Tonno e Cipolla",
-          "prices_by_order_method": {
-            "delivery": 12.5,
-            "dine_in": 12.5,
-            "pickup": 12.5,
-            "room_service": 12.5
-          },
-          "available": true
-        },
-        {
-          "sku": "422124",
-          "name": "Bruschetta 4 Stk.",
-          "prices_by_order_method": {
-            "delivery": 6.5,
-            "dine_in": 6.5,
-            "pickup": 6.5,
-            "room_service": 6.5
-          },
-          "available": true
-        },
-        {
-          "sku": "422087",
-          "name": "Pizza Scampi",
-          "prices_by_order_method": {
-            "delivery": 15.5,
-            "dine_in": 15.5,
-            "pickup": 15.5,
-            "room_service": 15.5
-          },
-          "available": true
-        },
-        {
-          "sku": "431346",
-          "name": "Pizza Scampi",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431350",
-          "name": "Spaghetti Carbonara",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431359",
-          "name": "Tagliatelle dello Chef",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431353",
-          "name": "Tagliatelle al Salmone",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431347",
-          "name": "Pizza Spinaci",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431344",
-          "name": "Pizza Tonno e Cipolla",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
-          "sku": "431348",
-          "name": "Spaghetti Aglio e Olio",
-          "prices_by_order_method": {
-            "delivery": 12,
-            "dine_in": 12,
-            "pickup": 12,
-            "room_service": 12
-          },
-          "available": true
-        },
-        {
           "sku": "422073",
           "name": "Antipasto Misto",
           "prices_by_order_method": {
@@ -4224,7 +4070,10 @@
         {
           "sku": "1555759",
           "name": "Insalata Matera",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 13.5,
+            "pickup": 13.5
+          },
           "available": true
         },
         {
@@ -4329,7 +4178,10 @@
         {
           "sku": "1555834",
           "name": "Pizza Mista",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 14,
+            "pickup": 14
+          },
           "available": true
         },
         {
@@ -4731,25 +4583,37 @@
         {
           "sku": "1555835",
           "name": "Tartufo Amaretto",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 7.5,
+            "pickup": 7.5
+          },
           "available": true
         },
         {
           "sku": "1555836",
           "name": "Gelato Misto",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 6,
+            "pickup": 6
+          },
           "available": true
         },
         {
           "sku": "1555837",
           "name": "Dessert Misto Matera",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 11.5,
+            "pickup": 11.5
+          },
           "available": true
         },
         {
           "sku": "1555838",
           "name": "Crème Caramel",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 8,
+            "pickup": 8
+          },
           "available": true
         },
         {
@@ -4887,49 +4751,73 @@
         {
           "sku": "1555848",
           "name": "Hausgemachte Ravioli gefüllt mit Ricotta und Spinat in Tomatensauce",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 16.5,
+            "pickup": 16.5
+          },
           "available": true
         },
         {
           "sku": "1555849",
           "name": "Hausgemachte grüne Ravioli gefüllt Rindergehacktes und Lauch",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 17.5,
+            "pickup": 17.5
+          },
           "available": true
         },
         {
           "sku": "1555850",
           "name": "Hausgemachte Ravioli gefüllt mit Kastanien in Butter - Salbei",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 17.5,
+            "pickup": 17.5
+          },
           "available": true
         },
         {
           "sku": "1555851",
           "name": "Hausgemachte Ravioli gefüllt mit Steinpilzen in Steinpilzsauce",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 17.5,
+            "pickup": 17.5
+          },
           "available": true
         },
         {
           "sku": "1555852",
           "name": "Hausgemachte schwarze Ravioli gefüllt mit Fisch in Hummersauce",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 18.5,
+            "pickup": 18.5
+          },
           "available": true
         },
         {
           "sku": "1555853",
           "name": "Hausgemachte schwarze Linguine mit Krabben und Zucchini in Tomatensauce",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 17.5,
+            "pickup": 17.5
+          },
           "available": true
         },
         {
           "sku": "1555854",
           "name": "Hausgemachte Cannelloni mit Ricotta und Spinat in Offen überbacken",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 16.5,
+            "pickup": 16.5
+          },
           "available": true
         },
         {
           "sku": "1555855",
           "name": "Ravioli Misto für 2 Personen",
-          "prices_by_order_method": {},
+          "prices_by_order_method": {
+            "delivery": 38.5,
+            "pickup": 38.5
+          },
           "available": true
         }
       ]
