@@ -129,3 +129,12 @@ paid orders.
 - DEPLOYED + verified live: BEFORE venue_reference_field=False, AFTER =True.
 - cvm-registry `24048d2`: PWA status card + timeline honesty + console "→ customer" marker. Deployed; served bundle verified.
 - VENUE_RECEIPT gate: `paid` is a rail claim (ADR-0008), so the settled path needs a real paid invoice — worker proving the signed lifecycle against the live service.
+
+## 2026-10-13 — x280 migration followup (ADR-0014 e2e proof)
+- Fleet moved cobrador→x280; cvm-orders absent on x280 → cloned from GitHub; all prior ADR-0014 commits (a611f06/795bd86/f6636c4) confirmed ANCESTORS of main — nothing lost.
+- Deno missing on x280 → installed 2.9.7 at ~/.local/bin/deno (restore deno.lock after first run: installer pollutes it with @deno/installer-shell-setup).
+- git identity absent on x280 → set repo-local Worker <worker@example.com> (matches every commit in this repo).
+- ngit remote+nsec absent in the fresh clone → copied repo-local nostr.nsec from cvm-registry (same fleet key, value never echoed) + added ngit remote; push verified 539402d..5963994 on both forges.
+- NEW tests/venue_reference_e2e_test.ts (2 tests, commit 5963994): drives the FULL chain through the routes — FakeRail settlement verdict → paid claimed by the customer's own GET /orders/:id (ADR-0008 honoured, nothing seeded) → signed facilitator placing → placed(+receipt) → customer poll asserts venue_reference="#4471", survives `ready`. Also proves: no signature ⇒ no way to mint a venue number (401).
+- Suite: 147 passed / 0 failed. GitHub + ngit both at 5963994.
+- LIVE finding (still true): paid on the deployed service needs a REAL settled invoice (railFromEnv = CashuRail only, no test rail in prod) — so the restaurant run is the first real exercise of the settled half. The venue CVM (facilitator-side) Stage-1 flow remains basket-only.
