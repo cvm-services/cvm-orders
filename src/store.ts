@@ -271,6 +271,9 @@ interface OrderRow {
   inputs: string | null;
   invoice: string | null;
   receipt: string | null;
+  /** Durable settlement columns, written by the claim transaction (ADR-0008). */
+  settlement_claim: string | null;
+  settled_at: string | null;
   updated_at: string;
 }
 
@@ -335,6 +338,22 @@ export class OrderStore {
     this.#db.exec(
       "CREATE INDEX IF NOT EXISTS settlement_proofs_hash ON settlement_proofs (proof_hash)",
     );
+
+    // BACKFILL: orders settled before the surfacing fix carry their proof only
+    // in settlement_proofs — the orders columns stayed NULL, so the console's
+    // fiat gate read "not proven" for genuinely paid orders. Derive the columns
+    // from the proof rows (the transactional source of truth) exactly once.
+    this.#db.exec(`
+      UPDATE orders SET
+        settlement_claim = (SELECT quote_id FROM settlement_proofs sp WHERE sp.order_id = orders.id),
+        settled_at = COALESCE(
+          (SELECT claimed_at FROM settlement_proofs sp WHERE sp.order_id = orders.id),
+          updated_at
+        )
+      WHERE state = 'paid'
+        AND settlement_claim IS NULL
+        AND EXISTS (SELECT 1 FROM settlement_proofs sp WHERE sp.order_id = orders.id)
+    `);
 
     // Durable Idempotency-Key replay: a client retry (or a retry after a
     // restart) must get the ORIGINAL order, not a second one.
@@ -560,8 +579,9 @@ export class OrderStore {
         }
       }
       const result = this.#db.prepare(
-        "UPDATE orders SET state = ?, updated_at = ? WHERE id = ? AND state = 'awaiting_payment'",
-      ).run(to, now, id);
+        "UPDATE orders SET state = ?, updated_at = ?, settlement_claim = ?, settled_at = ? " +
+          "WHERE id = ? AND state = 'awaiting_payment'",
+      ).run(to, now, claim.quoteId, now, id);
       if (result.changes !== 1) {
         this.#db.exec("ROLLBACK");
         return "lost";
@@ -706,6 +726,24 @@ function rowToOrder(row: OrderRow): Order {
   if (row.inputs !== null) order.inputs = JSON.parse(row.inputs) as Record<string, unknown>;
   if (row.invoice !== null) order.invoice = JSON.parse(row.invoice) as OrderInvoice;
   if (row.receipt !== null) order.receipt = JSON.parse(row.receipt) as Receipt;
+  // The settlement proof, surfaced (ADR-0008): the facilitator console's fiat
+  // gate reads payload.settlement to decide whether the sats leg is proven.
+  // The durable columns (settlement_claim / settled_at) are written by the same
+  // transaction that flips awaiting_payment -> paid, so their presence IS the
+  // proof — before this surfacing, the gate could never open because the
+  // service recorded the claim but never showed it.
+  if (
+    row.settlement_claim !== null && row.settlement_claim !== undefined &&
+    row.settled_at !== null && row.settled_at !== undefined
+  ) {
+    const payload = order.payload as Record<string, unknown>;
+    payload.settlement = {
+      status: "settled",
+      method: "bolt11",
+      settled_at: row.settled_at,
+      proof: { payment_hash: row.settlement_claim },
+    };
+  }
   return order;
 }
 
