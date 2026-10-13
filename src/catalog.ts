@@ -49,12 +49,63 @@ export interface Venue {
   venue_slug: string;
   name?: string | null;
   items: CatalogItem[];
+  /**
+   * The venue's OWN ordering page, when it declares one. This is the hand-off
+   * target the facilitator console opens: the basket is entered there, on the
+   * facilitator's device, and we never see card data (ADR-0013).
+   *
+   * `null` (or absent on a hand-built catalog) means the venue declared none —
+   * pay at the terminal. It is never invented, and a non-https value is refused
+   * at parse time.
+   */
+  order_url?: string | null;
 }
 
 export interface Catalog {
   sats_per_eur: number;
   option_surcharges_sats: Record<string, number>;
   venues: Venue[];
+}
+
+/**
+ * The venue hand-off shape the facilitator console reads
+ * (`order.payload.venue = { slug, rail, checkout_url }`).
+ */
+export interface CheckoutVenue {
+  slug: string;
+  /** The venue's own rail, for display. */
+  rail: string;
+  /** Where the facilitator opens the venue's ordering page. null = none declared. */
+  checkout_url: string | null;
+}
+
+/**
+ * A venue's ordering URL, or null. ONLY https is accepted: the console renders
+ * this as a link the facilitator clicks, so `javascript:`, `data:` and plain
+ * http would be an injection or a downgrade. An unparseable value is treated as
+ * absent rather than passed through.
+ */
+export function normaliseOrderUrl(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Project a catalog venue into the shape the facilitator console reads. */
+export function buildCheckoutVenue(venue: Venue): CheckoutVenue {
+  return {
+    slug: venue.venue_slug,
+    // The venue's own rail. "unknown" is honest: we have not verified how the
+    // venue settles, and the console displays exactly that.
+    rail: "unknown",
+    checkout_url: normaliseOrderUrl(venue.order_url),
+  };
 }
 
 export interface OrderLine {
@@ -185,6 +236,7 @@ export function parseCatalog(raw: unknown): Catalog {
       venue_slug: v.venue_slug.trim(),
       name: typeof v.name === "string" ? v.name : null,
       items,
+      order_url: normaliseOrderUrl(v.order_url),
     });
   }
   return { sats_per_eur: rate, option_surcharges_sats: surcharges, venues };

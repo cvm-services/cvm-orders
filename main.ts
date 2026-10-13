@@ -12,7 +12,7 @@ import { assertNoCardMaterial, CardMaterialRefused } from "./src/hygiene.ts";
 import { CashuRail, type PaymentRail, qrDataUri, RailError, RailUnavailableError, railFromEnv } from "./src/rail.ts";
 import { meltPlan, type MintProbe } from "./src/melt_plan.ts";
 import { resolveMintUrl } from "./src/mints.ts";
-import { type Catalog, CatalogRefusal, loadCatalog, priceOrder } from "./src/catalog.ts";
+import { buildCheckoutVenue, type Catalog, CatalogRefusal, loadCatalog, priceOrder } from "./src/catalog.ts";
 import { startSweeper, type SweeperDeps, type SweeperHandle, sweepIntervalMsFromEnv } from "./src/sweeper.ts";
 import {
   CHALLENGE_PATH,
@@ -498,11 +498,21 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
         : {};
       const id = crypto.randomUUID();
       const customerNpub = normaliseCustomerNpub(body.customer_npub);
+      // The catalog entry carries the venue's own ordering URL; `priceOrder`
+      // has already proved it exists, so this cannot be undefined.
+      const catalogVenue = catalog.venues.find((v) => v.venue_slug === priced.venue_slug)!;
       const payload = {
         venue_slug: priced.venue_slug,
         fulfilment: priced.fulfilment,
         items: priced.lines,
         inputs,
+        // The venue hand-off the facilitator console reads (custodyPlan):
+        // payload.venue = { slug, rail, checkout_url }. Without this the console
+        // showed "no venue checkout URL declared" for EVERY order, because the
+        // field it reads was never written by any code path. When the venue has
+        // declared no ordering page, checkout_url is null and the console's
+        // honest "pay at the terminal" message is correct.
+        venue: buildCheckoutVenue(catalogVenue),
         // Only present when they signed in; absence IS anonymity (ADR-0018).
         ...(customerNpub ? { customer_npub: customerNpub } : {}),
       };
