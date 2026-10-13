@@ -123,8 +123,8 @@ Deno.test("a fresh order is awaiting_payment — never paid — and stays out of
   assertEquals(res.status, 201);
   assertEquals(body.state, "awaiting_payment");
   assertEquals(body.subtotal, 9900);
-  assertEquals(body.fee, 792);
-  assertEquals(body.total, 10692);
+  assertEquals(body.fee, 2079);
+  assertEquals(body.total, 11979);
   assertEquals(body.expires_at, null, "no invoice yet, so no expiry to claim");
   assert(typeof body.id === "string" && body.id.length >= 16);
 
@@ -146,7 +146,7 @@ Deno.test("POST /orders ignores the client's amount in both directions", async (
     fulfilment: "pickup",
     inputs: {},
   });
-  assertEquals(cheap.body.total, 10692, "1 sat for a 9.9 EUR pizza buys the same pizza at the same price");
+  assertEquals(cheap.body.total, 11979, "1 sat for a 9.9 EUR pizza buys the same pizza at the same price");
 
   const inflated = await createOrder(handle, {
     venue_slug: "test-venue",
@@ -154,7 +154,7 @@ Deno.test("POST /orders ignores the client's amount in both directions", async (
     fulfilment: "pickup",
     inputs: {},
   });
-  assertEquals(inflated.body.total, 10692);
+  assertEquals(inflated.body.total, 11979);
 });
 
 Deno.test("an unpriceable basket is 400 with a reason and creates no order", async () => {
@@ -211,7 +211,7 @@ Deno.test("the invoice endpoint returns bolt11 + a self-contained qr, and create
     typeof invoice.qr === "string" && invoice.qr.startsWith("data:image/svg+xml;base64,"),
     `qr must be a self-contained image URL, got ${String(invoice.qr).slice(0, 40)}`,
   );
-  assertEquals(invoice.total, 10692);
+  assertEquals(invoice.total, 11979);
   assert(typeof invoice.expires_at === "string" && !Number.isNaN(Date.parse(invoice.expires_at as string)));
   assertEquals(rail.creates, 1);
 
@@ -260,7 +260,7 @@ Deno.test("a settled invoice moves the order to paid exactly once", async () => 
   assertEquals(first.status, 200);
   const paid = await first.json() as { state: string; total: number };
   assertEquals(paid.state, "paid");
-  assertEquals(paid.total, 10692);
+  assertEquals(paid.total, 11979);
   const checksAfterFirst = rail.checks;
 
   // The second poll must not re-transition (and must not even ask again).
@@ -352,7 +352,7 @@ Deno.test("the shipped PWA's exact request works against the real committed cata
     inputs: { "contact.phone": "+4915112345678" },
   });
   assertEquals(res.status, 201, "the Pay button's POST is accepted");
-  assertEquals(body.total, 10692);
+  assertEquals(body.total, 11979);
 
   const invoice = await (await handle(get(`/orders/${body.id as string}/invoice`))).json() as Record<string, unknown>;
   assert(typeof invoice.bolt11 === "string" && invoice.bolt11.length > 0);

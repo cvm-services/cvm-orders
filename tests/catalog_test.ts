@@ -97,18 +97,19 @@ Deno.test("the fulfilment method picks the price: delivery costs what delivery c
     items: [{ sku: "100", qty: 1 }],
   });
   assertEquals(delivery.subtotal, 11500, "11.5 EUR, not the pickup 9.9");
-  assertEquals(delivery.fee, 920);
-  assertEquals(delivery.total, 12420);
+  assertEquals(delivery.fee, 2415);
+  assertEquals(delivery.total, 13915);
 });
 
-Deno.test("fee is floor(8% of subtotal) in integer sats — boundary pinned", () => {
-  // Documented rule: fee = Math.floor(subtotal * 800 / 10000). Never rounds up,
+Deno.test("fee is floor(21% of subtotal) in integer sats — boundary pinned", () => {
+  // Documented rule: fee = Math.floor(subtotal * 2100 / 10000). Never rounds up,
   // so the customer is never charged a fractional-sat rounding artefact.
-  assertEquals(feeSats(12), 0, "0.96 sats floors to 0");
-  assertEquals(feeSats(13), 1, "1.04 sats floors to 1");
-  assertEquals(feeSats(100), 8, "exact");
-  assertEquals(feeSats(12499), 999, "999.92 floors to 999");
-  assertEquals(feeSats(12500), 1000, "exactly 1000");
+  // Operator decision 2026-10-13: 21% (was 8%).
+  assertEquals(feeSats(4), 0, "0.84 sats floors to 0");
+  assertEquals(feeSats(5), 1, "1.05 sats floors to 1");
+  assertEquals(feeSats(100), 21, "exact");
+  assertEquals(feeSats(12499), 2624, "2624.79 floors to 2624");
+  assertEquals(feeSats(12500), 2625, "exactly 2625");
 
   // The same boundary through the whole priced order: 12.499 EUR = 12499 sats.
   const order = priceOrder(fixture, {
@@ -117,11 +118,11 @@ Deno.test("fee is floor(8% of subtotal) in integer sats — boundary pinned", ()
     items: [{ sku: "bbox", qty: 1 }],
   });
   assertEquals(order.subtotal, 12499);
-  assertEquals(order.fee, 999);
-  assertEquals(order.total, 13498);
+  assertEquals(order.fee, 2624);
+  assertEquals(order.total, 15123);
   assert(Number.isInteger(order.total) && Number.isInteger(order.fee) && Number.isInteger(order.subtotal));
   // One sat lower, the fee is one sat lower too: the table above is not a coincidence.
-  assertEquals(feeSats(12499) + 1, feeSats(12499 + 12), "fee is monotone across the boundary");
+  assertEquals(feeSats(12499) + 1, feeSats(12499 + 5), "fee is monotone across the boundary");
 });
 
 Deno.test("priced option surcharges are added server-side from the catalog, not from the client", () => {
@@ -199,6 +200,6 @@ Deno.test("the committed catalog is the shipped PWA's own menu, and it prices", 
   });
   assertEquals(order.lines[0].sku, "100");
   assertEquals(order.subtotal, 9900);
-  assertEquals(order.fee, 792);
-  assertEquals(order.total, 10692);
+  assertEquals(order.fee, 2079);
+  assertEquals(order.total, 11979);
 });

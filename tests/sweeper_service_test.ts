@@ -143,7 +143,7 @@ Deno.test("the service's own wiring settles and expires with no customer poll", 
         assertEquals(created.status, 201);
         const order = await created.json() as { id: string; total: number; state: string };
         assertEquals(order.state, "awaiting_payment");
-        assertEquals(order.total, 10692, "priced server-side from the committed catalog");
+        assertEquals(order.total, 11979, "priced server-side from the committed catalog");
 
         const invoiceRes = await route(get(`/orders/${order.id}/invoice`));
         assertEquals(invoiceRes.status, 200);

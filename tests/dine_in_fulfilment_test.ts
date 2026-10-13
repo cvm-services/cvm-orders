@@ -42,10 +42,10 @@ Deno.test("ADR-0015: a dine_in-only venue can be ordered from", () => {
     items: [{ sku: "1", qty: 1 }],
   });
   assertEquals(order.lines[0].sku, "1");
-  // 6 EUR at 1000 sats/EUR, plus the 8% facilitator fee.
+  // 6 EUR at 1000 sats/EUR, plus the 21% facilitator fee.
   assertEquals(order.subtotal, 6000);
-  assertEquals(order.fee, 480);
-  assertEquals(order.total, 6480);
+  assertEquals(order.fee, 1260);
+  assertEquals(order.total, 7260);
   assertEquals(order.fulfilment, "dine_in");
 });
 

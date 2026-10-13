@@ -38,7 +38,7 @@ pizza does not change the charge — there are tests for both directions. An ite
 `sku` **or** by exact name, because the shipped client sends no sku. A basket that cannot be priced
 is a 400 with a reason, and creates no order.
 
-The facilitator fee is **`floor(8% of subtotal)` in integer sats**, added to the subtotal. The
+The facilitator fee is **`floor(21% of subtotal)` in integer sats** (operator decision 2026-10-13; was 8%), added to the subtotal. The
 rounding rule is deliberate (floor; never round-up, never float) and the boundary is pinned in
 `tests/catalog_test.ts`. `POST /orders` returns `{id, state, subtotal, fee, total, expires_at}` and
 honours an `Idempotency-Key` header, so a client retry returns the same order rather than creating a

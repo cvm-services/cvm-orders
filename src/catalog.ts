@@ -29,8 +29,8 @@ export const KNOWN_FULFILMENTS: readonly Fulfilment[] = [
   "room_service",
 ];
 
-/** Facilitator fee, in basis points of the subtotal. */
-export const FEE_BASIS_POINTS = 800;
+/** Facilitator fee, in basis points of the subtotal. Operator decision 2026-10-13: 21%. */
+export const FEE_BASIS_POINTS = 2100;
 /** EUR -> sats, matching the shipped client's own display rate. */
 export const DEFAULT_SATS_PER_EUR = 1000;
 export const MAX_QTY = 50;
@@ -100,10 +100,10 @@ export class CatalogRefusal extends Error {
 /**
  * Facilitator fee, in integer sats.
  *
- * ROUNDING RULE: `floor(subtotal * 8 / 100)`. The fee is never rounded up, so a
+ * ROUNDING RULE: `floor(subtotal * 21 / 100)`. The fee is never rounded up, so a
  * fractional-sat artefact can never increase what the customer is charged; the
- * fee is always <= 8% of the subtotal. Pinned at the boundary in
- * tests/catalog_test.ts (feeSats(12499) === 999, feeSats(12500) === 1000).
+ * fee is always <= 21% of the subtotal. Pinned at the boundary in
+ * tests/catalog_test.ts (feeSats(12499) === 2624, feeSats(12500) === 2625).
  */
 export function feeSats(subtotal: number): number {
   return Math.floor((subtotal * FEE_BASIS_POINTS) / 10_000);
