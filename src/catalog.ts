@@ -12,7 +12,22 @@
  * sees the same number it was shown; they are still server-side numbers.)
  */
 
-export type Fulfilment = "pickup" | "delivery";
+export type Fulfilment = "pickup" | "delivery" | "dine_in" | "room_service";
+
+/**
+ * Order methods the venue CVMs are known to publish. A venue prices its own
+ * items per method, and the set is not ours to choose: chandi-berlin prices
+ * every item `dine_in` only, three-buddies prices pickup/delivery/dine_in/
+ * room_service, pizza-e-pasta prices pickup only. The order API therefore accepts
+ * any method the venue actually priced, and refuses one it did not. Adding a
+ * method here is cheap; the real gate is the per-item price lookup below.
+ */
+export const KNOWN_FULFILMENTS: readonly Fulfilment[] = [
+  "pickup",
+  "delivery",
+  "dine_in",
+  "room_service",
+];
 
 /** Facilitator fee, in basis points of the subtotal. */
 export const FEE_BASIS_POINTS = 800;
@@ -268,10 +283,20 @@ export function priceOrder(catalog: Catalog, request: unknown): PricedOrder {
     );
   }
 
-  const fulfilment = body.fulfilment;
-  if (fulfilment !== "pickup" && fulfilment !== "delivery") {
-    throw new CatalogRefusal("unsupported_fulfilment", `fulfilment must be "pickup" or "delivery"`);
+  const rawFulfilment = body.fulfilment;
+  // Accept any method we know a venue to publish; the per-item price lookup below
+  // is what actually decides. A venue that priced only `dine_in` (chandi-berlin)
+  // used to be refused here outright and could never be ordered from.
+  if (
+    typeof rawFulfilment !== "string" ||
+    !KNOWN_FULFILMENTS.includes(rawFulfilment as Fulfilment)
+  ) {
+    throw new CatalogRefusal(
+      "unsupported_fulfilment",
+      `fulfilment must be one of ${KNOWN_FULFILMENTS.join(", ")}`,
+    );
   }
+  const fulfilment = rawFulfilment as Fulfilment;
 
   if (!Array.isArray(body.items)) {
     throw new CatalogRefusal("bad_items", "items must be an array");

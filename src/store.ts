@@ -28,6 +28,10 @@
  */
 import { DatabaseSync } from "node:sqlite";
 import { assertNoCardMaterial, CardMaterialRefused } from "./hygiene.ts";
+// The fulfilment method set is the VENUE's, defined once in the catalog layer
+// (chandi-berlin prices dine_in only), so the store shares it instead of
+// re-declaring a narrower copy that silently refuses a served venue.
+import type { Fulfilment } from "./catalog.ts";
 
 /**
  * An order is BORN unpaid: `awaiting_payment` is what `create()` produces, and
@@ -113,7 +117,13 @@ export interface OrderMoney {
   subtotal: number;
   fee: number;
   total: number;
-  fulfilment: "pickup" | "delivery";
+  /**
+   * The fulfilment method the venue's own catalog priced this order for. The set
+   * lives in `src/catalog.ts` (`Fulfilment`) because it is the venue's set, not
+   * ours: chandi-berlin prices `dine_in` only. Imported rather than re-declared so
+   * the two cannot drift.
+   */
+  fulfilment: Fulfilment;
   inputs: Record<string, unknown>;
 }
 
