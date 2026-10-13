@@ -23,6 +23,17 @@ export interface Invoice {
 
 export type SettlementStatus = "pending" | "settled" | "expired";
 
+/** A NUT-05 melt quote: pay THIS invoice out of the mint's ecash. */
+export type MeltState = "unpaid" | "pending" | "paid";
+
+export interface MeltQuote {
+  quoteId: string;
+  /** The invoice we asked the mint to pay (echoed for the caller's audit). */
+  request: string | null;
+  state: MeltState;
+  expiresAt: string | null;
+}
+
 export interface PaymentRail {
   readonly name: string;
   createInvoice(req: InvoiceRequest): Promise<Invoice>;
@@ -123,6 +134,54 @@ export class CashuRail implements PaymentRail {
     throw new RailError(`unknown mint quote state: ${state || "(empty)"}`);
   }
 
+  /**
+   * NUT-05: ask the mint to pay a Lightning invoice out of its ecash.
+   *
+   * Used by the facilitator flow ("pay with 2fiat", PLAN-pay-with-2fiat): the
+   * customer's sats sit at the mint as unclaimed ecash; melting pays the 2fiat
+   * top-up invoice with them. The amount is whatever the REQUEST carries — the
+   * mint is the one that reads the bolt11, so we never send an amount that
+   * could disagree with the invoice.
+   */
+  async meltQuote(req: { request: string; memo?: string }): Promise<MeltQuote> {
+    const request = typeof req.request === "string" ? req.request.trim() : "";
+    if (!request) throw new RailError("melt requires the invoice the mint should pay");
+    const res = await this.#send(`${this.#baseUrl}/v1/melt/quote/bolt11`, {
+      method: "POST",
+      headers: { "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ request, unit: "sat" }),
+    });
+    const body = await this.#readJson(res, "melt quote");
+    const quoteId = body.quote;
+    if (typeof quoteId !== "string" || !quoteId) throw new RailError("melt quote: mint returned no quote id");
+    const state = this.#mapMeltState(body.state, "melt quote");
+    const expirySeconds = typeof body.expiry === "number" ? body.expiry : null;
+    return {
+      quoteId,
+      request: typeof body.request === "string" ? body.request : null,
+      state,
+      expiresAt: expirySeconds !== null ? new Date(expirySeconds * 1000).toISOString() : null,
+    };
+  }
+
+  /** NUT-05: did the melt go through? Only the mint may say it PAID. */
+  async checkMelt(quoteId: string): Promise<MeltState> {
+    const res = await this.#send(
+      `${this.#baseUrl}/v1/melt/quote/bolt11/${encodeURIComponent(quoteId)}`,
+      { method: "GET", headers: { accept: "application/json" } },
+    );
+    const body = await this.#readJson(res, "melt quote status");
+    return this.#mapMeltState(body.state, "melt status");
+  }
+
+  #mapMeltState(raw: unknown, where: string): MeltState {
+    const state = String(raw ?? "").toUpperCase();
+    if (state === "UNPAID") return "unpaid";
+    if (state === "PENDING") return "pending";
+    if (state === "PAID") return "paid";
+    throw new RailError(`unknown ${where} state: ${state || "(empty)"}`);
+  }
+
   async #send(url: string, init: RequestInit): Promise<Response> {
     let res: Response;
     try {
@@ -130,11 +189,15 @@ export class CashuRail implements PaymentRail {
     } catch (e) {
       throw new RailError(`mint unreachable: ${String((e as Error)?.name ?? e)}`);
     }
-    if (!res.ok) throw new RailError(`mint returned http ${res.status}`);
     return res;
   }
 
   async #readJson(res: Response, what: string): Promise<Record<string, unknown>> {
+    if (!res.ok) {
+      // Name the operation in the error: "melt quote: mint returned http 400"
+      // tells the operator which leg failed; "mint returned http 400" does not.
+      throw new RailError(`${what}: mint returned http ${res.status}`);
+    }
     try {
       const body = await res.json();
       if (typeof body !== "object" || body === null || Array.isArray(body)) {
