@@ -64,6 +64,24 @@ Deno.test("a venue with no ordering URL produces NO checkout_url (never invented
   assert(!venue.checkout_url);
 });
 
+Deno.test("a venue with no online checkout is NOT orderable (not a mere missing URL)", () => {
+  // The operator rule: we can only support venues that take payment ONLINE.
+  // A venue whose only settlement is a physical terminal is not supportable —
+  // the console must say that, not offer an order the facilitator abandons.
+  const catalog = parseCatalog(CATALOG);
+  const kiosk = catalog.venues.find((v) => v.venue_slug === "mystery-kiosk")!;
+  const venue = buildCheckoutVenue(kiosk);
+  assertEquals(venue.orderable, false);
+  assertEquals(venue.checkout_url, null);
+});
+
+Deno.test("a venue WITH an online ordering shop is orderable", () => {
+  const catalog = parseCatalog(CATALOG);
+  const three = catalog.venues.find((v) => v.venue_slug === "three-buddies-berlin")!;
+  const venue = buildCheckoutVenue(three);
+  assertEquals(venue.orderable, true);
+});
+
 Deno.test("buildCheckoutVenue refuses a non-https ordering URL (no javascript:/http: link)", () => {
   const bad = parseCatalog({
     ...CATALOG,

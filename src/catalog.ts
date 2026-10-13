@@ -77,6 +77,19 @@ export interface CheckoutVenue {
   rail: string;
   /** Where the facilitator opens the venue's ordering page. null = none declared. */
   checkout_url: string | null;
+  /**
+   * Whether we can settle this venue's order in sats at all.
+   *
+   * The operator rule (2026-10-14): only venues that take payment ONLINE are
+   * supportable. A venue whose settlement is a physical terminal needs the card
+   * (or cash) at the counter, which our model cannot serve — so it is NOT
+   * orderable, and the console must say that plainly instead of offering an
+   * order the facilitator would have to abandon.
+   *
+   * Derived from whether the venue declares an online ordering page; a
+   * separately-onboarded venue without one is genuinely unsupportable.
+   */
+  orderable: boolean;
 }
 
 /**
@@ -99,12 +112,16 @@ export function normaliseOrderUrl(raw: unknown): string | null {
 
 /** Project a catalog venue into the shape the facilitator console reads. */
 export function buildCheckoutVenue(venue: Venue): CheckoutVenue {
+  const checkout_url = normaliseOrderUrl(venue.order_url);
   return {
     slug: venue.venue_slug,
     // The venue's own rail. "unknown" is honest: we have not verified how the
     // venue settles, and the console displays exactly that.
     rail: "unknown",
-    checkout_url: normaliseOrderUrl(venue.order_url),
+    checkout_url,
+    // No online checkout => we cannot settle this venue in sats. Not a
+    // temporary condition and not something a facilitator can work around.
+    orderable: checkout_url !== null,
   };
 }
 
