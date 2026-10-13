@@ -741,13 +741,25 @@ export class OrderStore {
   }
 
   /**
-   * Paid-only work queue. Filtering stays on state alone — a receipt never
-   * changes who is in the queue — and receipts are not part of a queue listing.
+   * The facilitator's work queue: paid AND in-flight (placing).
+   *
+   * Paid-only was a bug (2026-10-14): the moment a facilitator opened "Placing
+   * #b6c61954", the order moved paid -> placing and vanished from the queue for
+   * EVERYONE — the console's only fallback was a localStorage list on the one
+   * device that started placing it, so any other device (or a cleared browser)
+   * saw an empty board while an order was mid-flight. In-flight work is server
+   * truth, not device truth.
+   *
+   * Filtering stays on state alone — a receipt never changes who is in the
+   * queue — and receipts are not part of a queue listing. Terminal states
+   * (placed, refunded) and not-yet-paid orders stay out: those are not work.
    * Durably ordered oldest-first, so a restart lists the same queue.
    */
   queue(): Order[] {
     const rows = this.#db
-      .prepare("SELECT * FROM orders WHERE state = 'paid' ORDER BY updated_at ASC, id ASC")
+      .prepare(
+        "SELECT * FROM orders WHERE state IN ('paid','placing') ORDER BY updated_at ASC, id ASC",
+      )
       .all() as unknown as OrderRow[];
     return rows.map((row) => {
       const copy = rowToOrder(row);

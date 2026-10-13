@@ -150,7 +150,15 @@ Deno.test("a receipt never changes who is in the queue", () => {
   paid(store, "o-q2");
   store.transition("o-q2", "placing", { receipt: receipt() });
 
-  assertEquals(store.queue().map((o) => o.id), ["o-q1"], "queue filtering is on state alone");
+  // o-q2 was `paid` (in the queue) and is now `placing` — still OUR work, so
+  // membership is UNCHANGED by the receipt, which is exactly the property this
+  // test exists to pin. (2026-10-14: in-flight orders used to vanish from every
+  // board the moment one facilitator started placing them.)
+  assertEquals(
+    store.queue().map((o) => o.id),
+    ["o-q1", "o-q2"],
+    "a receipt never changes who is in the queue",
+  );
   assertEquals(store.queue()[0].receipt, undefined, "a queue listing carries no receipt");
   assertEquals(store.get("o-q2")?.receipt, receipt(), "the receipt itself is kept");
   assertEquals(store.all().length, 2);
