@@ -1,10 +1,11 @@
 {
   "_provenance": {
     "what": "Server-side venue catalog used to recompute every order price (ADR-0008: never trust a client amount).",
-    "source": "https://cvm-pwa.orangesync.tech/menu.json (the file the shipped PWA at /order/ fetches as ../menu.json)",
-    "captured_at": "2026-10-12",
-    "source_sha256": "6229cdd0111ba70db7d3e7ca8f90ded6fe71ce075c90e57f8bc536f0e660516f",
-    "how": "curl -sS https://cvm-pwa.orangesync.tech/menu.json | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
+    "source": "https://cvm-pwa.orangesync.tech/menu.json (deployed by scripts/cvm-deploy-catalog.sh; the file the shipped PWA at /order/ fetches as ../menu.json)",
+    "captured_at": "2026-10-13",
+    "source_sha256": "46338167c9c072ecac467796602dbd6670493446341c95ca429896f983c3463e",
+    "sha256_note": "sha256 of the captured menu.json this catalog was generated from; step 5 of the deploy script asserts the deployed file matches.",
+    "how": "tools/capture_menu.py (live ContextVM round trip) | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
     "regenerate": "bash scripts/cvm-deploy-catalog.sh  (in cvm-orders)",
     "note": "Prices are mirror-captured from the venue CVMs' live menu events; if a venue menu changes, re-run the deploy script rather than editing this file."
   },
@@ -2862,6 +2863,1348 @@
           "name": "Penne Funghi",
           "prices_by_order_method": {
             "pickup": 11.7
+          },
+          "available": true
+        }
+      ]
+    },
+    {
+      "venue_slug": "chandi-berlin",
+      "name": "Chandi Restaurant",
+      "items": [
+        {
+          "sku": "1",
+          "name": "Subzi Shorba A, G",
+          "prices_by_order_method": {
+            "dine_in": 6
+          },
+          "available": true
+        },
+        {
+          "sku": "2",
+          "name": "Madras Rasam A, G",
+          "prices_by_order_method": {
+            "dine_in": 6
+          },
+          "available": true
+        },
+        {
+          "sku": "3",
+          "name": "Badam Shorba A, G, H",
+          "prices_by_order_method": {
+            "dine_in": 7
+          },
+          "available": true
+        },
+        {
+          "sku": "4",
+          "name": "Mulligatawney A, G",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "5",
+          "name": "Sauer-Scharf-Suppe A, G nach indischer Art",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "6",
+          "name": "Knoblauchsuppe A, G nach indischer Art",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "7",
+          "name": "Tomatensuppe A, G nach indischer Art",
+          "prices_by_order_method": {
+            "dine_in": 7
+          },
+          "available": true
+        },
+        {
+          "sku": "17",
+          "name": "Fischsuppe A, G nach indischer Art",
+          "prices_by_order_method": {
+            "dine_in": 9
+          },
+          "available": true
+        },
+        {
+          "sku": "8",
+          "name": "Samosas A, G, H",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "9",
+          "name": "Paneer Pakoras G",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "10",
+          "name": "Champignon Pakoras",
+          "prices_by_order_method": {
+            "dine_in": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "11",
+          "name": "Chicken Pakoras",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "12",
+          "name": "Onion Bhaji",
+          "prices_by_order_method": {
+            "dine_in": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "13",
+          "name": "Fisch Pakoras D",
+          "prices_by_order_method": {
+            "dine_in": 8.5
+          },
+          "available": true
+        },
+        {
+          "sku": "14",
+          "name": "Gobhi Pakoras",
+          "prices_by_order_method": {
+            "dine_in": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "15",
+          "name": "Für 1 Person",
+          "prices_by_order_method": {
+            "dine_in": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "16",
+          "name": "Für 2 Personen",
+          "prices_by_order_method": {
+            "dine_in": 15
+          },
+          "available": true
+        },
+        {
+          "sku": "21",
+          "name": "Grüner Salat J",
+          "prices_by_order_method": {
+            "dine_in": 8.9
+          },
+          "available": true
+        },
+        {
+          "sku": "22",
+          "name": "Chandi Salat J",
+          "prices_by_order_method": {
+            "dine_in": 13
+          },
+          "available": true
+        },
+        {
+          "sku": "23",
+          "name": "Chicken Salat J",
+          "prices_by_order_method": {
+            "dine_in": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "24",
+          "name": "Punjabi Salat G, J",
+          "prices_by_order_method": {
+            "dine_in": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "31",
+          "name": "Daal Tarka G (auch vegan)",
+          "prices_by_order_method": {
+            "dine_in": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "32",
+          "name": "Subzi Curry (vegan)",
+          "prices_by_order_method": {
+            "dine_in": 11.9
+          },
+          "available": true
+        },
+        {
+          "sku": "33",
+          "name": "Mattar Paneer G",
+          "prices_by_order_method": {
+            "dine_in": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "34",
+          "name": "Aloo Gobhi (vegan) pikant",
+          "prices_by_order_method": {
+            "dine_in": 12.9
+          },
+          "available": true
+        },
+        {
+          "sku": "35",
+          "name": "Shahi Paneer G, H indischer Rahmkäse mit",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "36",
+          "name": "Shahi Bengan G, H (auch vegan)",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "37",
+          "name": "Saag Paneer G",
+          "prices_by_order_method": {
+            "dine_in": 13.5
+          },
+          "available": true
+        },
+        {
+          "sku": "38",
+          "name": "Malai Kofta G",
+          "prices_by_order_method": {
+            "dine_in": 13.9
+          },
+          "available": true
+        },
+        {
+          "sku": "39",
+          "name": "Tinda Masala G, 1 (auch vegan) pikant",
+          "prices_by_order_method": {
+            "dine_in": 13.9
+          },
+          "available": true
+        },
+        {
+          "sku": "40",
+          "name": "Channa Masala 1 (vegan) pikant",
+          "prices_by_order_method": {
+            "dine_in": 12.5
+          },
+          "available": true
+        },
+        {
+          "sku": "41",
+          "name": "Paneer Jhalfrezi G, 1 scharf",
+          "prices_by_order_method": {
+            "dine_in": 14.9
+          },
+          "available": true
+        },
+        {
+          "sku": "46",
+          "name": "Chicken Curry",
+          "prices_by_order_method": {
+            "dine_in": 12.9
+          },
+          "available": true
+        },
+        {
+          "sku": "47",
+          "name": "Chili Chicken 1 scharf",
+          "prices_by_order_method": {
+            "dine_in": 14.9
+          },
+          "available": true
+        },
+        {
+          "sku": "48",
+          "name": "Chicken Masala scharf",
+          "prices_by_order_method": {
+            "dine_in": 14.9
+          },
+          "available": true
+        },
+        {
+          "sku": "49",
+          "name": "Chicken Saag",
+          "prices_by_order_method": {
+            "dine_in": 13.9
+          },
+          "available": true
+        },
+        {
+          "sku": "50",
+          "name": "Chicken Sabzi",
+          "prices_by_order_method": {
+            "dine_in": 13.9
+          },
+          "available": true
+        },
+        {
+          "sku": "51",
+          "name": "Chicken Mango G, H",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "52",
+          "name": "Chicken Jakhni G , H",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "53",
+          "name": "Chicken Korma G, H",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "54",
+          "name": "Chicken Vindaloo scharf",
+          "prices_by_order_method": {
+            "dine_in": 15.9
+          },
+          "available": true
+        },
+        {
+          "sku": "61",
+          "name": "Mutton Curry",
+          "prices_by_order_method": {
+            "dine_in": 13.9
+          },
+          "available": true
+        },
+        {
+          "sku": "62",
+          "name": "Mutton Saag",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "63",
+          "name": "Mutton Sabzi",
+          "prices_by_order_method": {
+            "dine_in": 14.5
+          },
+          "available": true
+        },
+        {
+          "sku": "64",
+          "name": "Mutton Jakhni G, H",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "65",
+          "name": "Mutton Masala scharf",
+          "prices_by_order_method": {
+            "dine_in": 16.5
+          },
+          "available": true
+        },
+        {
+          "sku": "66",
+          "name": "Mutton Khumbi G",
+          "prices_by_order_method": {
+            "dine_in": 15.9
+          },
+          "available": true
+        },
+        {
+          "sku": "67",
+          "name": "Mutton Korma G, H",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "68",
+          "name": "Mutton Madras 1 scharf",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "71",
+          "name": "Vegetable Jhalfrezi",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "72",
+          "name": "Fisch Dughri D",
+          "prices_by_order_method": {
+            "dine_in": 17.5
+          },
+          "available": true
+        },
+        {
+          "sku": "73",
+          "name": "Mutton Jhalfrezi",
+          "prices_by_order_method": {
+            "dine_in": 17.5
+          },
+          "available": true
+        },
+        {
+          "sku": "75",
+          "name": "Fisch Masala D (scharf)",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "76",
+          "name": "Fisch Madras D",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "77",
+          "name": "Chicken Jhalfrezi 1 (scharf)",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "78",
+          "name": "Fisch Vindaloo D, 1 (scharf)",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "79",
+          "name": "Chicken Madras 1",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "80",
+          "name": "Mutton Vindaloo (scharf)",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "81",
+          "name": "Scampi Curry B",
+          "prices_by_order_method": {
+            "dine_in": 22.5
+          },
+          "available": true
+        },
+        {
+          "sku": "82",
+          "name": "Scampi Vindaloo B (scharf)",
+          "prices_by_order_method": {
+            "dine_in": 23.5
+          },
+          "available": true
+        },
+        {
+          "sku": "85",
+          "name": "Vegetable Biryani",
+          "prices_by_order_method": {
+            "dine_in": 14.9
+          },
+          "available": true
+        },
+        {
+          "sku": "86",
+          "name": "Chicken Biryani H pikant",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "87",
+          "name": "Mutton Biryani H pikant",
+          "prices_by_order_method": {
+            "dine_in": 17.5
+          },
+          "available": true
+        },
+        {
+          "sku": "88",
+          "name": "Chandi Biryani H pikant",
+          "prices_by_order_method": {
+            "dine_in": 18.5
+          },
+          "available": true
+        },
+        {
+          "sku": "89",
+          "name": "Scampi Biryani B, H pikant",
+          "prices_by_order_method": {
+            "dine_in": 21.9
+          },
+          "available": true
+        },
+        {
+          "sku": "90",
+          "name": "Ente Tikka G",
+          "prices_by_order_method": {
+            "dine_in": 20.9
+          },
+          "available": true
+        },
+        {
+          "sku": "91",
+          "name": "Chandi Mixed Grill B",
+          "prices_by_order_method": {
+            "dine_in": 23.5
+          },
+          "available": true
+        },
+        {
+          "sku": "92",
+          "name": "Chicken Tandoori G",
+          "prices_by_order_method": {
+            "dine_in": 15.5
+          },
+          "available": true
+        },
+        {
+          "sku": "93",
+          "name": "Butter Chicken G",
+          "prices_by_order_method": {
+            "dine_in": 16.5
+          },
+          "available": true
+        },
+        {
+          "sku": "94",
+          "name": "Mutton Tikka G",
+          "prices_by_order_method": {
+            "dine_in": 18.9
+          },
+          "available": true
+        },
+        {
+          "sku": "95",
+          "name": "Chicken Tikka G",
+          "prices_by_order_method": {
+            "dine_in": 16.5
+          },
+          "available": true
+        },
+        {
+          "sku": "96",
+          "name": "Scampi Tikka Masala B scharf",
+          "prices_by_order_method": {
+            "dine_in": 22.9
+          },
+          "available": true
+        },
+        {
+          "sku": "97",
+          "name": "Paneer Tikka G",
+          "prices_by_order_method": {
+            "dine_in": 18.5
+          },
+          "available": true
+        },
+        {
+          "sku": "101",
+          "name": "Tinda Masala Gosht",
+          "prices_by_order_method": {
+            "dine_in": 17.5
+          },
+          "available": true
+        },
+        {
+          "sku": "102",
+          "name": "Paneer Makhani G",
+          "prices_by_order_method": {
+            "dine_in": 16.9
+          },
+          "available": true
+        },
+        {
+          "sku": "103",
+          "name": "Butter Scampi B, G",
+          "prices_by_order_method": {
+            "dine_in": 22.9
+          },
+          "available": true
+        },
+        {
+          "sku": "104",
+          "name": "Ente Korma H",
+          "prices_by_order_method": {
+            "dine_in": 20.9
+          },
+          "available": true
+        },
+        {
+          "sku": "105",
+          "name": "Chicken Kesari G, H",
+          "prices_by_order_method": {
+            "dine_in": 19.5
+          },
+          "available": true
+        },
+        {
+          "sku": "106",
+          "name": "Ente Makhani G",
+          "prices_by_order_method": {
+            "dine_in": 20.9
+          },
+          "available": true
+        },
+        {
+          "sku": "2-2",
+          "name": "Personen",
+          "prices_by_order_method": {
+            "dine_in": 48.5
+          },
+          "available": true
+        },
+        {
+          "sku": "2-3",
+          "name": "Personen",
+          "prices_by_order_method": {
+            "dine_in": 46.9
+          },
+          "available": true
+        },
+        {
+          "sku": "2-4",
+          "name": "Personen",
+          "prices_by_order_method": {
+            "dine_in": 52.5
+          },
+          "available": true
+        },
+        {
+          "sku": "111",
+          "name": "Butter Chicken G",
+          "prices_by_order_method": {
+            "dine_in": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "112",
+          "name": "Chicken Spezial A, H",
+          "prices_by_order_method": {
+            "dine_in": 9.5
+          },
+          "available": true
+        },
+        {
+          "sku": "116",
+          "name": "Papadam",
+          "prices_by_order_method": {
+            "dine_in": 0.5
+          },
+          "available": true
+        },
+        {
+          "sku": "117",
+          "name": "Naan Natur A, G",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "114",
+          "name": "Naan mit Käse A, G",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "115",
+          "name": "Naan mit Knoblauch A, G",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "118",
+          "name": "Bhatura A, C, G",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "119",
+          "name": "Chapati A",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "120",
+          "name": "Raita G",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "130",
+          "name": "Mixed Pickles",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "131",
+          "name": "Mango Chutney",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "122",
+          "name": "Indisches Matka-Eis G, H, 1 Portion",
+          "prices_by_order_method": {
+            "dine_in": 5.9
+          },
+          "available": true
+        },
+        {
+          "sku": "124",
+          "name": "Gulab Jamun G",
+          "prices_by_order_method": {
+            "dine_in": 5.9
+          },
+          "available": true
+        },
+        {
+          "sku": "201",
+          "name": "Campari Soda 1 / Orange 1 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 6.5
+          },
+          "available": true
+        },
+        {
+          "sku": "202",
+          "name": "Martini 12 bianco, rosso 1 oder extra dry 5 cl",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "203",
+          "name": "Sandeman Sherry 12 medium, dry, secco 5 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "204",
+          "name": "Prosecco 12 Glas 0,1 l",
+          "prices_by_order_method": {
+            "dine_in": 5.9
+          },
+          "available": true
+        },
+        {
+          "sku": "205",
+          "name": "Aperol Spritz 1, 8, 12 Glas 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "206",
+          "name": "Hugo 12 Glas 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "211",
+          "name": "Espresso 2 Tasse",
+          "prices_by_order_method": {
+            "dine_in": 2.7
+          },
+          "available": true
+        },
+        {
+          "sku": "212",
+          "name": "Doppelter Espresso 2 Tasse",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "214",
+          "name": "Italienischer Kaffee 2 Tasse",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "216",
+          "name": "Latte Macchiato 2, G Tasse",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "218",
+          "name": "Heiße Schokolade G Tasse",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "220",
+          "name": "Grog von 4 cl Pott Rum Mischgetränk Tasse",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "222",
+          "name": "Heiße Zitrone Tasse",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "226",
+          "name": "Tee im Pyramidenbeutel Glas",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "227",
+          "name": "Tee Kännchen",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "228",
+          "name": "Frischer Ingwertee frischer Ingwer mit Honig Glas",
+          "prices_by_order_method": {
+            "dine_in": 5
+          },
+          "available": true
+        },
+        {
+          "sku": "229",
+          "name": "Tee „Chandiwala“ Schwarztee mit frischer Minze Glas",
+          "prices_by_order_method": {
+            "dine_in": 5
+          },
+          "available": true
+        },
+        {
+          "sku": "230",
+          "name": "Yogi Tee Indischer Tee mit Milch Glas",
+          "prices_by_order_method": {
+            "dine_in": 3
+          },
+          "available": true
+        },
+        {
+          "sku": "241",
+          "name": "Beck’s A Fl. 0,33 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "242",
+          "name": "König Ludwig Hefeweizen Dunkel A Fl. 0,50 l",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "243",
+          "name": "König Ludwig Kristallweizen A Fl. 0,50 l",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "244",
+          "name": "König Ludwig Hefeweizen A Fl. 0,50 l",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "245",
+          "name": "König Ludwig Hefeweizen Alkoholfrei A Fl. 0,50 l",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "246",
+          "name": "Warsteiner Alkoholfrei A Fl. 0,33 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "247",
+          "name": "Berliner Weisse A rot 1 oder grün 1 Fl. 0,33 l",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "249",
+          "name": "Kingfisher A Indisches Bier Fl. 0,33 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "250",
+          "name": "Cobra A Indisches Bier Fl. 0,33 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "257",
+          "name": "Fassbrause",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "259",
+          "name": "Selters Mineralwasser mit oder ohne Kohlensäure Fl. 0,25 l",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "260",
+          "name": "Selters Mineralwasser mit oder ohne Kohlensäure Fl. 0,75 l",
+          "prices_by_order_method": {
+            "dine_in": 7.5
+          },
+          "available": true
+        },
+        {
+          "sku": "262",
+          "name": "San Pellegrino italienisches Mineralwasser Fl. 0,25 l",
+          "prices_by_order_method": {
+            "dine_in": 3.5
+          },
+          "available": true
+        },
+        {
+          "sku": "264",
+          "name": "Bionade Holunder, Litschi oder Kräuter Fl. 0,20 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "271",
+          "name": "Rhabarbersaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "272",
+          "name": "Apfelsaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "273",
+          "name": "Orangensaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "275",
+          "name": "Ananassaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "276",
+          "name": "Bananen-Fruchtsaftgetränk 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "277",
+          "name": "Kirsch-Fruchtsaftgetränk 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "278",
+          "name": "Kiba Kirsch- & Bananenfruchtsaftgetränk 0,4 l",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "279",
+          "name": "Cranberry Juice Preiselbernektar 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "280",
+          "name": "Marcujanektar 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "281",
+          "name": "Mangonektar 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "282",
+          "name": "Litschisaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "283",
+          "name": "Guavensaft 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "284",
+          "name": "Saftschorle 0,2 l",
+          "prices_by_order_method": {
+            "dine_in": 3.7
+          },
+          "available": true
+        },
+        {
+          "sku": "285",
+          "name": "Große Saftschorle 0,4 l",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "286",
+          "name": "Große Säfte / Nektare 0,4 l",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "293",
+          "name": "Malteserkreuz Acquavit 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "294",
+          "name": "Aalborg Jubiläums Akvavit 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "295",
+          "name": "Russian Standard A 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "296",
+          "name": "Grappa Hausmarke 12 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "297",
+          "name": "Mangoschnaps 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 3.9
+          },
+          "available": true
+        },
+        {
+          "sku": "306",
+          "name": "Tequila Sierra Silver 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4
+          },
+          "available": true
+        },
+        {
+          "sku": "307",
+          "name": "Old Monk 1 Indischer brauner Rum 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "312",
+          "name": "Vecchia Romagna 12 italienischer Brandy 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "313",
+          "name": "Remy Martin V.S.O.P 12 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "314",
+          "name": "Hennessy V.S. 12 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.9
+          },
+          "available": true
+        },
+        {
+          "sku": "321",
+          "name": "Jim Beam A Bourbon 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "322",
+          "name": "Jack Daniels A Tennesse 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "325",
+          "name": "Balantine’s A, 1 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "326",
+          "name": "Johnnie Walker Red Label A, 1 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.5
+          },
+          "available": true
+        },
+        {
+          "sku": "327",
+          "name": "Johnnie Walker Black Label A, 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "328",
+          "name": "Dimple A 12 years 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 5.5
+          },
+          "available": true
+        },
+        {
+          "sku": "337",
+          "name": "Baileys Irish Cream 1, G 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "338",
+          "name": "Amaretto Disaronno 1, H 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "339",
+          "name": "Sambuca Molinari 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "340",
+          "name": "Amaro Averna 1 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "341",
+          "name": "Ramazzotti 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "342",
+          "name": "Fernet Branca 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "343",
+          "name": "Branca Menta 1 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "344",
+          "name": "Jägermeister 2 cl",
+          "prices_by_order_method": {
+            "dine_in": 4.3
+          },
+          "available": true
+        },
+        {
+          "sku": "347",
+          "name": "Moët & Chandon Rosé",
+          "prices_by_order_method": {
+            "dine_in": 95
           },
           "available": true
         }

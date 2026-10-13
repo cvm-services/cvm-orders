@@ -48,22 +48,29 @@ else
     --out "$REG/site/menu.json"
 fi
 
-# --------------------------- 2. regenerate venues.json (deployed menu → catalog)
+# --------------------------- 2. regenerate venues.json (fresh capture → catalog)
+# Read the LOCAL file we just captured, NOT $MENU_URL. Reading the deployed file
+# here was an ordering bug: the deploy (step 3) has not happened yet, so the
+# remote file still holds the PREVIOUS capture and the catalog silently shrank
+# (observed 2026-10-13: capture had 3 venues, catalog got 1). Step 5 now proves
+# the deployed file is byte-identical to the one this catalog was built from.
 echo "== 2/5 regenerate venues.json =="
-python3 - "$MENU_URL" "$ORD" <<'PY'
-import json, sys, urllib.request, hashlib, datetime
+python3 - "$REG/site/menu.json" "$MENU_URL" "$ORD" <<'PY'
+import json, sys, hashlib, datetime, pathlib
 
-menu_url, ord_dir = sys.argv[1], sys.argv[2]
-raw = urllib.request.urlopen(menu_url).read()
+local_menu, menu_url, ord_dir = sys.argv[1], sys.argv[2], sys.argv[3]
+raw = pathlib.Path(local_menu).read_bytes()
 menu = json.loads(raw)
+digest = hashlib.sha256(raw).hexdigest()
 
 catalog = {
   "_provenance": {
     "what": "Server-side venue catalog used to recompute every order price (ADR-0008: never trust a client amount).",
-    "source": f"{menu_url} (the file the shipped PWA at /order/ fetches as ../menu.json)",
+    "source": f"{menu_url} (deployed by scripts/cvm-deploy-catalog.sh; the file the shipped PWA at /order/ fetches as ../menu.json)",
     "captured_at": datetime.date.today().isoformat(),
-    "source_sha256": hashlib.sha256(raw).hexdigest(),
-    "how": f"curl -sS {menu_url} | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
+    "source_sha256": digest,
+    "sha256_note": "sha256 of the captured menu.json this catalog was generated from; step 5 of the deploy script asserts the deployed file matches.",
+    "how": "tools/capture_menu.py (live ContextVM round trip) | scripts/cvm-deploy-catalog.sh (generate, never hand-edit)",
     "regenerate": "bash scripts/cvm-deploy-catalog.sh  (in cvm-orders)",
     "note": "Prices are mirror-captured from the venue CVMs' live menu events; if a venue menu changes, re-run the deploy script rather than editing this file."
   },
@@ -118,11 +125,24 @@ ssh -o BatchMode=yes "$HOST" '
 
 # ------------------------------------------------------------------ 5. verify
 echo "== 5/5 verify live =="
-python3 - "$MENU_URL" <<'PY'
-import json, sys, urllib.request
-menu = json.loads(urllib.request.urlopen(sys.argv[1]).read())
+python3 - "$MENU_URL" "$ORD/config/venues.json" <<'PY'
+import json, sys, urllib.request, hashlib
+menu_url, catalog_path = sys.argv[1], sys.argv[2]
+raw = urllib.request.urlopen(menu_url).read()
+menu = json.loads(raw)
 print(f"menu.json live: {len(menu['venues'])} venues, "
       f"{sum(len(v['items']) for v in menu['venues'])} items")
+
+# The deployed menu.json and the catalog the service prices with are generated
+# from the SAME capture. Assert the deployed bytes hash to the catalog's recorded
+# source_sha256, so "catalog shrank while the site did not" can never go unnoticed.
+catalog = json.load(open(catalog_path))
+want = catalog["_provenance"].get("source_sha256")
+got = hashlib.sha256(raw).hexdigest()
+if want and want != got:
+    sys.exit(f"DEPLOY MISMATCH: deployed menu.json sha256 {got} != catalog source {want} "
+             f"({len(menu['venues'])} deployed venues vs {len(catalog['venues'])} in catalog)")
+print(f"deployed menu.json matches the catalog source (sha256 {got[:16]}...)")
 PY
 # probe order: price a real SKU server-side, the exact way the PWA does
 PROBE=$(python3 - "$MENU_URL" <<'PY'
