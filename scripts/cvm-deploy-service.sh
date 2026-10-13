@@ -90,9 +90,16 @@ tar -C "$ORD" -cf - main.ts src config deno.json | \
 echo "== 4/5 install + restart =="
 ssh -o BatchMode=yes "$HOST" "
   set -e
-  sudo mkdir -p $APP
-  sudo cp -r /tmp/main.ts /tmp/src /tmp/config /tmp/deno.json $APP/
-  sudo systemctl restart cvm-orders
+  # CLEAN SWAP, never cp -r into the live dir: cp -r MERGES, so a file deleted
+  # upstream lingers forever and the running service silently keeps stale code
+  # (bit us 2026-10-14: the queue fix shipped but the service stayed paid-only).
+  sudo rm -rf $APP.new
+  sudo mkdir -p $APP.new
+  sudo cp -r /tmp/main.ts /tmp/src /tmp/config /tmp/deno.json $APP.new/
+  sudo systemctl stop cvm-orders
+  sudo rm -rf $APP
+  sudo mv $APP.new $APP
+  sudo systemctl start cvm-orders
   sleep 2
   systemctl is-active cvm-orders
   rm -rf /tmp/main.ts /tmp/src /tmp/config /tmp/deno.json
