@@ -10,6 +10,7 @@ import {
 import { serveOptions } from "./src/serve_options.ts";
 import { assertNoCardMaterial, CardMaterialRefused } from "./src/hygiene.ts";
 import { CashuRail, type PaymentRail, qrDataUri, RailError, RailUnavailableError, railFromEnv } from "./src/rail.ts";
+import { meltPlan, type MintProbe } from "./src/melt_plan.ts";
 import { resolveMintUrl } from "./src/mints.ts";
 import { type Catalog, CatalogRefusal, loadCatalog, priceOrder } from "./src/catalog.ts";
 import { startSweeper, type SweeperDeps, type SweeperHandle, sweepIntervalMsFromEnv } from "./src/sweeper.ts";
@@ -302,6 +303,52 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
 
     if (match && req.method === "POST" && url.pathname.endsWith("/transition")) {
       return json({ error: "invalid path" }, 400);
+    }
+
+    // The melt plan (Phase C): which legs of "pay with 2fiat" can run NOW.
+    // Read-only, unauthenticated like the order GET — it leaks nothing the
+    // console cannot already see, and its whole job is honesty about readiness.
+    const planMatch = url.pathname.match(/^\/orders\/([^/]+)\/melt-plan$/);
+    if (planMatch && req.method === "GET") {
+      const order = deps.store.get(decodeURIComponent(planMatch[1]));
+      if (!order) return json({ error: "order not found" }, 404);
+      const rail = await railFor();
+      // The real mint probe: the mint is reachable from this host (only 2fiat's
+      // edge is blocked). A NUT-05 status GET against a nonexistent quote still
+      // proves the route exists and answers.
+      const probeMint = async (): Promise<MintProbe> => {
+        try {
+          const base = Deno.env.get("CASHU_MINT_URL") ?? "";
+          const res = await fetch(`${base.replace(/\/+$/, "")}/v1/melt/quote/bolt11/probe`, {
+            signal: AbortSignal.timeout(4000),
+            headers: { accept: "application/json" },
+          });
+          // 404/400 with a JSON body = the route answered = NUT-05 is served.
+          const answered = res.status !== 502 && res.status !== 503 && res.status !== 504;
+          return { reachable: answered, nut05: answered };
+        } catch (e) {
+          return { reachable: false, nut05: false, error: String((e as Error)?.name ?? e).slice(0, 60) };
+        }
+      };
+      // Top-up leg: 2fiat's edge was blocked by rate-limiting (shared limiter).
+      // ONE HEAD request, never more, and a failure means "not ready" — this
+      // probe must never be the thing that re-trips the limiter.
+      const topupReady = async () => {
+        try {
+          const res = await fetch("https://2fiat.com/api/v1/topup", {
+            method: "OPTIONS",
+            signal: AbortSignal.timeout(5000),
+            headers: { "user-agent": "Mozilla/5.0", "ngrok-skip-browser-warning": "5000" },
+          });
+          // 400 = route exists and answers. 404 would mean it moved.
+          const ok = res.status === 400 || res.status === 405;
+          return ok ? { ready: false, reason: "2fiat reachable; top-up tool not deployed yet (Phase B)" }
+                    : { ready: false, reason: `2fiat answered http ${res.status}` };
+        } catch (e) {
+          return { ready: false, reason: `2fiat edge unreachable (${String((e as Error)?.name ?? e).slice(0, 40)})` };
+        }
+      };
+      return json(await meltPlan(order, { probeMint, topupReady }));
     }
 
     // Attach the customer's identity after the fact (ADR-0018). Deliberately NOT
