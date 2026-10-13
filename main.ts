@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { type Order, type OrderInvoice, type OrderState, OrderStore, type Receipt } from "./src/store.ts";
+import {
+  type Order,
+  type OrderInvoice,
+  type OrderState,
+  OrderStore,
+  normaliseCustomerNpub,
+  type Receipt,
+} from "./src/store.ts";
 import { serveOptions } from "./src/serve_options.ts";
 import { assertNoCardMaterial, CardMaterialRefused } from "./src/hygiene.ts";
 import { CashuRail, type PaymentRail, qrDataUri, RailError, RailUnavailableError, railFromEnv } from "./src/rail.ts";
@@ -297,6 +304,33 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       return json({ error: "invalid path" }, 400);
     }
 
+    // Attach the customer's identity after the fact (ADR-0018). Deliberately NOT
+    // behind the facilitator's signature: the customer is not a facilitator, and
+    // the operation is safe without auth because the store's compare-and-set
+    // means the FIRST key wins — knowing an order id does not let anyone take
+    // over someone else's order.
+    const attach = url.pathname.match(/^\/orders\/([^/]+)\/identity$/);
+    if (attach && req.method === "POST") {
+      let body: Record<string, unknown>;
+      try {
+        body = await req.json();
+      } catch {
+        return json({ error: "invalid json body" }, 400);
+      }
+      let npub: string | null;
+      try {
+        npub = normaliseCustomerNpub(body.customer_npub);
+      } catch (e) {
+        return json({ error: message(e), reason: "invalid_customer_npub" }, 400);
+      }
+      if (!npub) return json({ error: "customer_npub is required" }, 400);
+      const outcome = deps.store.attachCustomerNpub(decodeURIComponent(attach[1]), npub);
+      if (outcome === "missing") return json({ error: "order not found" }, 404);
+      // A conflict is not the caller's to resolve; report it so the UI can stop
+      // retrying instead of silently believing it saved.
+      return json({ result: outcome }, outcome === "conflict" ? 409 : 200);
+    }
+
     const transition = url.pathname.match(/^\/orders\/([^/]+)\/transition$/);
     if (transition && req.method === "POST") {
       // Fail closed BEFORE the body is even read: a bad credential cannot move
@@ -386,6 +420,15 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
         if (replayed) return replayed;
       }
 
+      // The customer's npub is validated here so a malformed one is a 400 with
+      // a reason, not a stored order the facilitator's DM tool later chokes on
+      // (ADR-0018). Absent/blank means anonymous, which is the common case.
+      try {
+        normaliseCustomerNpub(body.customer_npub);
+      } catch (e) {
+        return json({ error: message(e), reason: "invalid_customer_npub" }, 400);
+      }
+
       const catalog = await catalogFor();
       if (!catalog) {
         return json({
@@ -407,11 +450,14 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
         ? body.inputs as Record<string, unknown>
         : {};
       const id = crypto.randomUUID();
+      const customerNpub = normaliseCustomerNpub(body.customer_npub);
       const payload = {
         venue_slug: priced.venue_slug,
         fulfilment: priced.fulfilment,
         items: priced.lines,
         inputs,
+        // Only present when they signed in; absence IS anonymity (ADR-0018).
+        ...(customerNpub ? { customer_npub: customerNpub } : {}),
       };
       const money = {
         venue_slug: priced.venue_slug,

@@ -67,6 +67,30 @@ export interface Receipt {
   captured_at?: string;
 }
 
+/**
+ * The customer's Nostr pubkey, or nothing (ADR-0018).
+ *
+ * Accepts ONLY a bare 64-char lowercase-hex x-only key. A value that merely
+ * looks plausible is worse than none: the facilitator's DM tool would fail on it
+ * exactly when they are trying to reach the customer about a stuck order. An
+ * empty string is treated as absent, not as an invalid key.
+ */
+export function normaliseCustomerNpub(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") throw new Error("customer_npub must be a string");
+  const v = value.trim();
+  if (v === "") return null;
+  if (!/^[0-9a-f]{64}$/.test(v)) {
+    throw new Error("customer_npub must be a 64-character lowercase hex pubkey");
+  }
+  return v;
+}
+
+/** True when the store has thrown because of a bad customer_npub. */
+export function isCustomerNpubRefusal(e: unknown): boolean {
+  return e instanceof Error && e.message.startsWith("customer_npub must be");
+}
+
 export interface Order {
   id: string;
   state: OrderState;
@@ -83,6 +107,13 @@ export interface Order {
   total?: number;
   fulfilment?: OrderMoney["fulfilment"];
   inputs?: Record<string, unknown>;
+  /**
+   * The CUSTOMER'S Nostr pubkey, when they signed in (ADR-0018). Optional: an
+   * anonymous order carries nothing here. It exists so the facilitator can reach
+   * the customer about a problem with their order — never for marketing, and
+   * never echoed into a customer-facing or public payload.
+   */
+  customer_npub?: string;
   /**
    * The order's single invoice. Created once by the rail and cached here, so a
    * repeat call returns the SAME bolt11 instead of a second quote — including
@@ -247,6 +278,7 @@ const SCHEMA_VERSION = 2;
 const ADDED_COLUMNS: Array<[string, string]> = [
   ["settlement_claim", "TEXT"],
   ["settled_at", "TEXT"],
+  ["customer_npub", "TEXT"],
 ];
 
 export interface OrderStoreOptions {
@@ -274,6 +306,7 @@ interface OrderRow {
   /** Durable settlement columns, written by the claim transaction (ADR-0008). */
   settlement_claim: string | null;
   settled_at: string | null;
+  customer_npub: string | null;
   updated_at: string;
 }
 
@@ -381,6 +414,12 @@ export class OrderStore {
     }
     assertNoCardMaterial(payload, "payload");
     if (money) assertNoCardMaterial(money, "order-money");
+    // Validate before anything is written: a malformed npub must fail the order,
+    // not be stored and discovered later by the facilitator's DM tool (ADR-0018).
+    const rawNpub = (payload && typeof payload === "object" && !Array.isArray(payload))
+      ? (payload as Record<string, unknown>).customer_npub
+      : undefined;
+    const customerNpub = normaliseCustomerNpub(rawNpub);
 
     const now = new Date().toISOString();
     const order: Order = {
@@ -388,6 +427,7 @@ export class OrderStore {
       state: "awaiting_payment",
       payload,
       updatedAt: now,
+      ...(customerNpub ? { customer_npub: customerNpub } : {}),
       ...(money
         ? { ...money, items: money.items.map((i) => ({ ...i, options: [...i.options] })) }
         : {}),
@@ -395,8 +435,9 @@ export class OrderStore {
     try {
       this.#db.prepare(
         `INSERT INTO orders (id, state, payload, venue_slug, items, subtotal, fee, total,
-                             fulfilment, inputs, invoice, receipt, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+                             fulfilment, inputs, customer_npub, invoice, receipt,
+                             created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
       ).run(
         id,
         order.state,
@@ -408,6 +449,7 @@ export class OrderStore {
         order.total ?? null,
         order.fulfilment ?? null,
         order.inputs ? JSON.stringify(order.inputs) : null,
+        order.customer_npub ?? null,
         now,
         now,
       );
@@ -418,6 +460,34 @@ export class OrderStore {
       throw e;
     }
     return this.#copy(order);
+  }
+
+  /**
+   * Attach the customer's Nostr pubkey to an order that has none (ADR-0018).
+   *
+   * The usual flow is pay-then-sign-in, so identity arrives after the order
+   * exists. The write is a compare-and-set on `customer_npub IS NULL`: the FIRST
+   * identity wins. Without that, anyone who learned an order id could attach
+   * their own key and redirect the facilitator's messages about an order that is
+   * not theirs.
+   *
+   * Returns "attached" | "unchanged" (same key again) | "conflict" (a different
+   * key is already there) | "missing" (no such order).
+   */
+  attachCustomerNpub(id: string, npub: unknown): "attached" | "unchanged" | "conflict" | "missing" {
+    const key = normaliseCustomerNpub(npub);
+    if (!key) throw new Error("customer_npub must be a 64-character lowercase hex pubkey");
+    const existing = this.#db
+      .prepare("SELECT customer_npub FROM orders WHERE id = ?")
+      .get(id) as { customer_npub: string | null } | undefined;
+    if (!existing) return "missing";
+    if (existing.customer_npub === key) return "unchanged";
+    if (existing.customer_npub !== null && existing.customer_npub !== "") return "conflict";
+    const result = this.#db
+      .prepare("UPDATE orders SET customer_npub = ?, updated_at = ? WHERE id = ? AND customer_npub IS NULL")
+      .run(key, new Date().toISOString(), id);
+    // A concurrent attach that won the race lands here as a conflict, not a loss.
+    return result.changes === 1 ? "attached" : "conflict";
   }
 
   /**
@@ -726,6 +796,12 @@ function rowToOrder(row: OrderRow): Order {
   if (row.inputs !== null) order.inputs = JSON.parse(row.inputs) as Record<string, unknown>;
   if (row.invoice !== null) order.invoice = JSON.parse(row.invoice) as OrderInvoice;
   if (row.receipt !== null) order.receipt = JSON.parse(row.receipt) as Receipt;
+  // The customer's identity, surfaced for the facilitator (ADR-0018). Only when
+  // present: an anonymous order must not acquire an empty-string placeholder
+  // that a DM tool would then try to use.
+  if (row.customer_npub !== null && row.customer_npub !== undefined && row.customer_npub !== "") {
+    order.customer_npub = row.customer_npub;
+  }
   // The settlement proof, surfaced (ADR-0008): the facilitator console's fiat
   // gate reads payload.settlement to decide whether the sats leg is proven.
   // The durable columns (settlement_claim / settled_at) are written by the same
