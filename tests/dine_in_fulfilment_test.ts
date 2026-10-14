@@ -21,6 +21,7 @@ const fixture: Catalog = {
     {
       venue_slug: "dine-in-only",
       name: "Dine In Only",
+      order_url: "https://shop.dine-in-only.example/checkout",
       items: [
         { sku: "1", name: "Subzi Shorba A, G", prices_by_order_method: { dine_in: 6 }, available: true },
       ],
@@ -28,6 +29,7 @@ const fixture: Catalog = {
     {
       venue_slug: "mixed",
       name: "Mixed Methods",
+      order_url: "https://shop.mixed.example/checkout",
       items: [
         { sku: "2", name: "Curry", prices_by_order_method: { pickup: 10, dine_in: 12 }, available: true },
       ],

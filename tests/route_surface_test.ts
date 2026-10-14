@@ -51,6 +51,7 @@ const catalog: Catalog = {
   venues: [{
     venue_slug: "test-venue",
     name: "Test Venue",
+    order_url: "https://shop.test-venue.example/checkout",
     items: [{ sku: "100", name: "Pizza Margherita", prices_by_order_method: { pickup: 9.9 }, available: true }],
   }],
 };

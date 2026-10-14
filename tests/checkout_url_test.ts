@@ -16,7 +16,7 @@
  * produce no URL at all — never a guessed or invented one.
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
-import { buildCheckoutVenue, parseCatalog } from "../src/catalog.ts";
+import { buildCheckoutVenue, parseCatalog, priceOrder, CatalogRefusal } from "../src/catalog.ts";
 
 const CATALOG = {
   sats_per_eur: 1000,
@@ -62,6 +62,53 @@ Deno.test("a venue with no ordering URL produces NO checkout_url (never invented
   assertEquals(venue.checkout_url, null, "must be null, not a guess");
   // The console treats a falsy url as 'no venue checkout URL declared' — correct.
   assert(!venue.checkout_url);
+});
+
+Deno.test("priceOrder REFUSES a known venue we cannot settle (money risk)", () => {
+  // The operator rule (2026-10-14): only venues that take payment ONLINE are
+  // supportable. If POST /orders still accepted an unsupportable venue, the
+  // customer could pay sats for an order no facilitator can ever finish — real
+  // money stuck. So the refusal must happen at PRICING time, before any order
+  // exists to pay into.
+  const catalog = parseCatalog(CATALOG);
+  const kiosk = catalog.venues.find((v) => v.venue_slug === "mystery-kiosk")!;
+  let refused: CatalogRefusal | null = null;
+  try {
+    priceOrder(catalog, {
+      venue_slug: kiosk.venue_slug,
+      items: [{ sku: "snack", qty: 1 }],
+      fulfilment: "pickup",
+      inputs: {},
+    });
+  } catch (e) {
+    refused = e instanceof CatalogRefusal ? e : null;
+  }
+  assertEquals(refused !== null, true, "an unsupportable venue must be refused");
+  assertEquals(refused!.reason, "venue_not_supportable");
+  assertEquals(
+    refused!.message.includes("online checkout"),
+    true,
+    `the refusal must say WHY: ${refused!.message}`,
+  );
+});
+
+Deno.test("priceOrder accepts a supportable venue (online checkout declared)", () => {
+  const catalog = parseCatalog(CATALOG);
+  const three = catalog.venues.find((v) => v.venue_slug === "three-buddies-berlin")!;
+  // The pricing itself is covered elsewhere; here only that the supportability
+  // gate does not fire.
+  let refused: CatalogRefusal | null = null;
+  try {
+    priceOrder(catalog, {
+      venue_slug: three.venue_slug,
+      items: [{ sku: "1", qty: 1 }],
+      fulfilment: "pickup",
+      inputs: {},
+    });
+  } catch (e) {
+    refused = e instanceof CatalogRefusal ? e : null;
+  }
+  assertEquals(refused?.reason ?? null, null);
 });
 
 Deno.test("a venue with no online checkout is NOT orderable (not a mere missing URL)", () => {

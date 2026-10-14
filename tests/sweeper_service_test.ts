@@ -17,10 +17,17 @@ import { FakeRail } from "../src/rail.ts";
 
 const ORIGIN = "https://cvm-pwa.example";
 
-/** The shipped PWA's own POST body, priced by the committed config/venues.json. */
+/**
+ * The shipped PWA's own POST body, priced by the committed config/venues.json.
+ *
+ * A SUPPORTABLE venue on purpose: since 2026-10-14 an unsupportable venue (one
+ * with no online checkout) is REFUSED at pricing, so this sweep test would be
+ * exercising the refusal instead of settlement. three-buddies declares a shop
+ * and the item below is its real 1.50 EUR entry.
+ */
 const pwaBody = {
-  venue_slug: "pizza-e-pasta-ruedesheimerplatz",
-  items: [{ name: "Pizza Margherita", qty: 1, amount: 9.9, options: "House · Single" }],
+  venue_slug: "three-buddies-berlin",
+  items: [{ name: "Capri Sun Kirsche 0,2l", qty: 1, amount: 1.5, options: "House,Single" }],
   fulfilment: "pickup",
   inputs: { "contact.phone": "+491****5678", "contact.name": "Ada" },
 };
@@ -143,7 +150,8 @@ Deno.test("the service's own wiring settles and expires with no customer poll", 
         assertEquals(created.status, 201);
         const order = await created.json() as { id: string; total: number; state: string };
         assertEquals(order.state, "awaiting_payment");
-        assertEquals(order.total, 11979, "priced server-side from the committed catalog");
+        // 1500 sats subtotal + floor(21%) = 315 fee.
+        assertEquals(order.total, 1815, "priced server-side from the committed catalog");
 
         const invoiceRes = await route(get(`/orders/${order.id}/invoice`));
         assertEquals(invoiceRes.status, 200);

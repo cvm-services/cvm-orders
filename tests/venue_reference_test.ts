@@ -16,6 +16,7 @@ const CATALOG: Catalog = {
   venues: [{
     venue_slug: "three-buddies-berlin",
     name: "Three Buddies Steglitz",
+    order_url: "https://shop.three-buddies-berlin.example/checkout",
     items: [{
       sku: "1052491",
       name: "Curly Fries",

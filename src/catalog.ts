@@ -155,6 +155,7 @@ export type RefusalReason =
   | "bad_qty"
   | "unsupported_fulfilment"
   | "unpriced_fulfilment"
+  | "venue_not_supportable"
   | "catalog_unavailable";
 
 /** Fail closed: a refusal is always a thrown error with a machine-readable reason. */
@@ -349,6 +350,18 @@ export function priceOrder(catalog: Catalog, request: unknown): PricedOrder {
     throw new CatalogRefusal(
       "unknown_venue",
       `unknown venue ${JSON.stringify(venueSlug || String(body.venue_slug ?? ""))}`,
+    );
+  }
+
+  // Supportability gate (operator rule 2026-10-14): only venues that take
+  // payment ONLINE are supportable, because our sats flow cannot pay at a
+  // physical terminal. Accepting an order we can never finish would trap the
+  // customer's sats — so this refuses BEFORE an order exists to pay into, at
+  // the same place every other pricing refusal happens.
+  if (!buildCheckoutVenue(venue).orderable) {
+    throw new CatalogRefusal(
+      "venue_not_supportable",
+      `venue ${JSON.stringify(venueSlug)} has no online checkout: its orders cannot be settled in sats, so orders are refused (an adapter would be needed first)`,
     );
   }
 

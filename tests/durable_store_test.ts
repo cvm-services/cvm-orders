@@ -45,6 +45,7 @@ const catalog: Catalog = {
     {
       venue_slug: "test-venue",
       name: "Test Venue",
+      order_url: "https://shop.test-venue.example/checkout",
       items: [
         {
           sku: "100",

@@ -55,10 +55,28 @@ fi
 # (observed 2026-10-13: capture had 3 venues, catalog got 1). Step 5 now proves
 # the deployed file is byte-identical to the one this catalog was built from.
 echo "== 2/5 regenerate venues.json =="
+CVM_VENUES_DIR="${CVM_VENUES_DIR:-$HOME/repos/contextvm-services/venues}" \
 python3 - "$REG/site/menu.json" "$MENU_URL" "$ORD" <<'PY'
 import json, sys, hashlib, datetime, pathlib
 
 local_menu, menu_url, ord_dir = sys.argv[1], sys.argv[2], sys.argv[3]
+import os, pathlib as _p
+
+def shop_url(slug):
+    """The venue's ONLINE SHOP, from the committed venue record.
+
+    Read from the record rather than the captured menu: the record is the
+    authoritative, committed source, and the capture depends on relay
+    availability (observed flapping 2026-10-14). None => the venue has no
+    online checkout => priceOrder refuses it (operator rule 2026-10-14).
+    """
+    rec = _p.Path(os.environ["CVM_VENUES_DIR"]) / slug / "venue.json"
+    try:
+        ven = json.loads(rec.read_text())["venue"]
+    except Exception:
+        return None
+    urls = ((ven.get("ordering") or {}).get("urls") or {})
+    return urls.get("platform_shop") or urls.get("external_web_shop")
 raw = pathlib.Path(local_menu).read_bytes()
 menu = json.loads(raw)
 digest = hashlib.sha256(raw).hexdigest()
@@ -82,6 +100,12 @@ catalog = {
     {
       "venue_slug": v["venue_slug"],
       "name": v["name"],
+      # The venue's OWN online shop, from the committed venue RECORD (not the
+      # capture, which depends on relay availability). priceOrder REFUSES a
+      # venue without one (operator rule 2026-10-14: online checkout or the
+      # venue cannot be settled in sats), and the console renders it as the
+      # hand-off. None = not supportable.
+      "order_url": shop_url(v["venue_slug"]),
       "items": [
         {"sku": i["sku"], "name": i["name"],
          "prices_by_order_method": i["prices_by_order_method"],

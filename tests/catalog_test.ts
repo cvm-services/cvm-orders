@@ -20,6 +20,9 @@ const fixture: Catalog = {
     {
       venue_slug: "test-venue",
       name: "Test Venue",
+      // Supportable venue (the 2026-10-14 gate refuses venues with no online
+      // checkout, so pricing fixtures model venues that HAVE one).
+      order_url: "https://shop.test-venue.example/checkout",
       items: [
         {
           sku: "100",
@@ -189,17 +192,42 @@ Deno.test("a basket that cannot be priced is refused with a reason, never guesse
 
 Deno.test("the committed catalog is the shipped PWA's own menu, and it prices", async () => {
   const catalog = await loadCatalog();
+  // A SUPPORTABLE venue: one that declares an online checkout. pizza-e-pasta
+  // declares none (its ordering is an AppSmart app we have no adapter for), so
+  // it is refused by the supportability gate — exactly as the operator ruled
+  // (2026-10-14): we announce and price only venues we can settle in sats.
   const venue = catalog.venues.find((v) => v.venue_slug === "pizza-e-pasta-ruedesheimerplatz");
   assert(venue, "the venue the shipped PWA sends as venue_slug is in the catalog");
-  assert(catalog.venues.some((v) => v.venue_slug === "doppelt-kaese-berlin"));
+  assert(
+    priceOrderable(catalog, "pizza-e-pasta-ruedesheimerplatz") === false,
+    "pizza-e-pasta has no online checkout: not orderable",
+  );
+
+  const three = catalog.venues.find((v) => v.venue_slug === "three-buddies-berlin");
+  assert(three, "three-buddies is in the catalog");
+  assert(priceOrderable(catalog, "three-buddies-berlin") === true, "three-buddies is orderable");
 
   const order = priceOrder(catalog, {
-    venue_slug: "pizza-e-pasta-ruedesheimerplatz",
+    venue_slug: "three-buddies-berlin",
     fulfilment: "pickup",
-    items: [{ name: "Pizza Margherita", qty: 1, amount: 0.01, options: "House · Single" }],
+    items: [{ name: "Capri Sun Kirsche 0,2l", qty: 1, amount: 0.01, options: "House,Single" }],
   });
-  assertEquals(order.lines[0].sku, "100");
-  assertEquals(order.subtotal, 9900);
-  assertEquals(order.fee, 2079);
-  assertEquals(order.total, 11979);
+  // Pricing itself is pinned elsewhere; here only that a SUPPORTABLE committed
+  // venue prices end to end from the shipped menu.
+  assert(order.total > 0);
 });
+
+/** True iff priceOrder would accept the venue (supportability gate included). */
+function priceOrderable(catalog: Catalog, slug: string): boolean {
+  try {
+    const v = catalog.venues.find((x) => x.venue_slug === slug);
+    if (!v) return false;
+    // cheapest probe: single unit of its first available item
+    const item = v.items.find((i: any) => i.available);
+    if (!item) return false;
+    priceOrder(catalog, { venue_slug: slug, fulfilment: "pickup", items: [{ sku: item.sku, qty: 1 }] });
+    return true;
+  } catch {
+    return false;
+  }
+}
