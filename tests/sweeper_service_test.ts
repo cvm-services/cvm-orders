@@ -14,6 +14,7 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { FakeRail } from "../src/rail.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const ORIGIN = "https://cvm-pwa.example";
 
@@ -27,6 +28,7 @@ const ORIGIN = "https://cvm-pwa.example";
  */
 const pwaBody = {
   venue_slug: "three-buddies-berlin",
+  refund_bolt11: TEST_REFUND_BOLT11,
   items: [{ name: "Capri Sun Kirsche 0,2l", qty: 1, amount: 1.5, options: "House,Single" }],
   fulfilment: "pickup",
   inputs: { "contact.phone": "+491****5678", "contact.name": "Ada" },

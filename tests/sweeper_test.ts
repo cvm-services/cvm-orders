@@ -35,6 +35,7 @@ import { type OrderInvoice, type OrderState, OrderStore } from "../src/store.ts"
 import { createRoute, type RouteDeps } from "../main.ts";
 import { ChallengeStore } from "../src/nip98.ts";
 import type { Catalog } from "../src/catalog.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 /** Fixed epoch milliseconds: every clock in this file is injected. */
 const T0 = 1_800_000_000_000;
@@ -92,7 +93,7 @@ async function awaitingOrder(
   id = "o-1",
   expiresAtMs = T0 + 900_000,
 ): Promise<string> {
-  store.create(id, { venue_slug: "test-venue" }, money);
+  store.create(id, { venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const invoice = await rail.createInvoice({ sats: 10692, memo: `cvm-orders ${id}`, idempotencyKey: id });
   await store.ensureInvoice(id, () =>
     Promise.resolve<OrderInvoice>({ ...invoice, expiresAt: new Date(expiresAtMs).toISOString(), qr: QR }));
@@ -248,7 +249,7 @@ Deno.test("an unreachable rail changes nothing, logs once per tick, and never th
   const { store, lines, deps } = bench();
   const rail = new RecordingRail(new RailError("mint unreachable: TimeoutError"));
   for (const id of ["o-1", "o-2", "o-3"]) {
-    store.create(id, {}, money);
+    store.create(id, { refund_bolt11: TEST_REFUND_BOLT11 }, money);
     await store.ensureInvoice(id, () =>
       Promise.resolve<OrderInvoice>({
         bolt11: `lnbc1${id}`,
@@ -317,7 +318,7 @@ Deno.test("a sweep-settled quote is spent everywhere: the same payment cannot se
   assertEquals(store.proofSpentBy(quoteId), "o-first", "the sweep must spend the payment request, exactly like the poll");
 
   // A second order carrying the SAME payment request (mint replay, or a bug).
-  store.create("o-second", { venue_slug: "test-venue" }, money);
+  store.create("o-second", { venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   await store.ensureInvoice("o-second", () =>
     Promise.resolve<OrderInvoice>({
       bolt11: "lnbc-replayed",
@@ -349,7 +350,7 @@ Deno.test("the sweep leaves an order alone — and says so — when its payment 
   await sweepOnce(deps);
   assertEquals(store.get("o-first")?.state, "paid");
 
-  store.create("o-second", { venue_slug: "test-venue" }, money);
+  store.create("o-second", { venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   await store.ensureInvoice("o-second", () =>
     Promise.resolve<OrderInvoice>({
       bolt11: "lnbc-replayed",
@@ -386,14 +387,16 @@ Deno.test("the sweep touches only awaiting_payment orders that have an invoice",
     ["o-refunded", "refunded"],
   ];
   for (const [id, state] of untouched) {
-    store.create(id, {}, money);
-    const path: OrderState[] = state === "refunded" ? ["paid", "refunded"] : ["paid", "placing", "placed", "ready"];
+    store.create(id, { refund_bolt11: TEST_REFUND_BOLT11 }, money);
+    const path: OrderState[] = state === "refunded"
+      ? ["paid", "refunding", "refunded"]
+      : ["paid", "placing", "placed", "ready"];
     const stop = path.indexOf(state) + 1;
     for (const [i, next] of path.slice(0, stop).entries()) {
       store.transition(id, next, i === 0 ? { from: "awaiting_payment" } : {});
     }
   }
-  store.create("o-expired", {}, money);
+  store.create("o-expired", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   store.transition("o-expired", "expired", { from: "awaiting_payment" });
   await store.ensureInvoice("o-paid", () => Promise.resolve<OrderInvoice>({ bolt11: "x", quoteId: "q-paid", expiresAt: new Date(T0 + 900_000).toISOString(), qr: QR }));
 

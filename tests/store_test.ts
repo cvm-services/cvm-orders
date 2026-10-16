@@ -45,9 +45,28 @@ Deno.test("allows refund only before placement and lists paid queue", () => {
   const store = new OrderStore();
   store.create("o-3");
   store.transition("o-3", "paid", { from: "awaiting_payment" });
+  // Since R1 (2026-10-15) existence of `refunded` requires a CONFIRMED melt, so
+  // the store walks paid -> refunding -> refunded. A direct paid -> refunded edge
+  // was removed on purpose: a state label must not be able to claim money moved.
+  assertEquals(store.transition("o-3", "refunding").state, "refunding");
   assertEquals(store.transition("o-3", "refunded").state, "refunded");
   paid(store, "o-4");
   assertEquals(store.queue().map((o) => o.id), ["o-4"]);
+});
+
+Deno.test("a paid order can no longer be labelled refunded directly", () => {
+  // The regression guard for the operator's money loss: before R1 the console
+  // set `refunded` with no melt behind it, so the label lied.
+  const store = new OrderStore();
+  store.create("o-direct");
+  store.transition("o-direct", "paid", { from: "awaiting_payment" });
+  assertThrows(
+    () => store.transition("o-direct", "refunded"),
+    InvalidTransitionError,
+    undefined,
+    "refunded is unreachable except through a confirmed melt",
+  );
+  assertEquals(store.get("o-direct")?.state, "paid", "the refusal left the order intact");
 });
 
 /** The receipt the console posts on `placed` (shape from cvm-registry pr/facilitator-console). */

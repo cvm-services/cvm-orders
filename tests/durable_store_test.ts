@@ -18,6 +18,7 @@ import { ChallengeStore } from "../src/nip98.ts";
 import { FakeRail } from "../src/rail.ts";
 import { OrderStore, type OrderMoney } from "../src/store.ts";
 import { facilitatorPubkey } from "./signing.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const money: OrderMoney = {
   venue_slug: "test-venue",
@@ -73,7 +74,7 @@ const invoice = (n: string) => ({
 Deno.test("an order, its money and its invoice survive a restart", async () => {
   const path = await tmpDb("restart");
   const before = new OrderStore({ path });
-  before.create("o-1", { venue_slug: "test-venue" }, money);
+  before.create("o-1", {  venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   await before.ensureInvoice("o-1", () => Promise.resolve(invoice("r")));
   before.transition("o-1", "paid", { from: "awaiting_payment" });
   before.close();
@@ -92,7 +93,7 @@ Deno.test("an order, its money and its invoice survive a restart", async () => {
 Deno.test("a restart never re-quotes an order that already has an invoice", async () => {
   const path = await tmpDb("requote");
   const before = new OrderStore({ path });
-  before.create("o-1", {}, money);
+  before.create("o-1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   await before.ensureInvoice("o-1", () => Promise.resolve(invoice("first")));
   before.close();
 
@@ -112,7 +113,7 @@ Deno.test("a restart never re-quotes an order that already has an invoice", asyn
 Deno.test("two stores over one file racing ensureInvoice: the FIRST invoice wins", async () => {
   const path = await tmpDb("invoice-race");
   const a = new OrderStore({ path });
-  a.create("o-1", {}, money);
+  a.create("o-1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const b = new OrderStore({ path });
 
   // Both callers reach the rail before either has committed — the situation the
@@ -131,10 +132,13 @@ Deno.test("two stores over one file racing ensureInvoice: the FIRST invoice wins
 Deno.test("terminal states survive a restart and cannot be revived", async () => {
   const path = await tmpDb("terminal");
   const before = new OrderStore({ path });
-  before.create("e1", {}, money);
+  before.create("e1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   before.transition("e1", "expired", { from: "awaiting_payment" });
-  before.create("r1", {}, money);
+  before.create("r1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   before.transition("r1", "paid", { from: "awaiting_payment" });
+  // R1: `refunded` is reachable only through the in-flight state that a real
+  // (mint-confirmed) melt passes through — never straight off `paid`.
+  before.transition("r1", "refunding");
   before.transition("r1", "refunded");
   before.close();
 
@@ -173,6 +177,7 @@ Deno.test("an Idempotency-Key replay survives a restart (one basket, one order)"
   };
   const body = {
     venue_slug: "test-venue",
+    refund_bolt11: TEST_REFUND_BOLT11,
     items: [{ name: "Pizza Margherita", qty: 1, amount: 9.9, options: "House · Single" }],
     fulfilment: "pickup",
     inputs: {},
@@ -205,8 +210,8 @@ Deno.test("a double-tap on Pay creates ONE order, not two", async () => {
   const path = await tmpDb("double-tap");
   const store = new OrderStore({ path });
   const respond = () => ({ id: "ignored" });
-  const a = store.createIdempotent("key", "id-a", {}, money, respond);
-  const b = store.createIdempotent("key", "id-b", {}, money, respond);
+  const a = store.createIdempotent("key", "id-a", { refund_bolt11: TEST_REFUND_BOLT11 }, money, respond);
+  const b = store.createIdempotent("key", "id-b", { refund_bolt11: TEST_REFUND_BOLT11 }, money, respond);
   assertEquals(a.replayed, false);
   assertEquals(b.replayed, true);
   assertEquals(a.order.id, "id-a");
@@ -270,9 +275,18 @@ Deno.test("the schema migrates a deployed (v1) database in place", async () => {
   assertEquals(migrated?.total, 10692);
   assertEquals(migrated?.invoice?.bolt11, invoice("legacy").bolt11, "its invoice survived");
   // New columns exist, and the new operations work against the migrated file.
+  //
+  // R1: a legacy row predates the refund column, so it has NO refund target —
+  // and a claim on it is therefore refused. That is the correct, money-safe
+  // outcome: the sats are not claimed, so there is nothing we would owe back.
+  assertEquals(store.claimSettlement("legacy-1", { quoteId: "quote-legacy" }), "no_refund_target",
+    "a migrated order with no refund invoice must not be settled");
+  assertEquals(store.get("legacy-1")?.state, "awaiting_payment", "and it stays unsettled");
+  // Recording a target makes the same order settleable.
+  store.setRefundTarget("legacy-1", TEST_REFUND_BOLT11);
   assertEquals(store.claimSettlement("legacy-1", { quoteId: "quote-legacy" }), "won");
   assertEquals(store.get("legacy-1")?.state, "paid");
-  store.create("new-1", {}, money);
+  store.create("new-1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   assertEquals(store.all().map((o) => o.id), ["legacy-1", "new-1"]);
   store.close();
 });
@@ -300,7 +314,7 @@ Deno.test("a cold start creates the store's directory instead of dying on it", a
     // the default `data/orders.sqlite` looks like. `node:sqlite` used to answer
     // "unable to open database file" and the service never started.
     const { store } = createService(env);
-    store.create("o-cold", { venue_slug: "test-venue" }, money);
+    store.create("o-cold", {  venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
     store.close();
 
     // And it really is a file, not a memory store: a second start reads it back.

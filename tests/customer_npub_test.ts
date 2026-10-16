@@ -12,6 +12,7 @@
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { OrderStore } from "../src/store.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const PK = "a".repeat(64);
 const MONEY = {
@@ -37,7 +38,7 @@ const MONEY = {
  */
 function store(payload: Record<string, unknown> = {}) {
   const s = new OrderStore();
-  const order = s.create("o1", { venue_slug: "v", ...payload }, MONEY);
+  const order = s.create("o1", { venue_slug: "v", refund_bolt11: TEST_REFUND_BOLT11, ...payload }, MONEY);
   s.claimSettlement("o1", { quoteId: "q-" + Math.random() });
   return { s, order };
 }
@@ -61,7 +62,7 @@ Deno.test("a bad npub is rejected at creation, not silently stored", () => {
   for (const bad of ["npub1short", "A".repeat(64), "z".repeat(64), "a".repeat(63), "a".repeat(65)]) {
     let threw = false;
     try {
-      s.create("bad-" + bad, { venue_slug: "v", customer_npub: bad }, MONEY);
+      s.create("bad-" + bad, {  venue_slug: "v", customer_npub: bad, refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
     } catch {
       threw = true;
     }
@@ -76,7 +77,7 @@ Deno.test("an empty or whitespace npub means ANONYMOUS, not invalid", () => {
   const s = new OrderStore();
   for (const blank of ["", "   ", undefined, null]) {
     const id = "blank-" + String(blank);
-    s.create(id, { venue_slug: "v", customer_npub: blank as never }, MONEY);
+    s.create(id, {  venue_slug: "v", customer_npub: blank as never, refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
     assertEquals(s.get(id)?.customer_npub ?? null, null, `"${blank}" must be anonymous`);
   }
 });
@@ -85,7 +86,7 @@ Deno.test("the npub survives a restart (durable, like the invoice)", () => {
   const path = Deno.makeTempFileSync({ suffix: ".db" });
   try {
     const a = new OrderStore({ path });
-    a.create("o1", { venue_slug: "v", customer_npub: PK }, MONEY);
+    a.create("o1", {  venue_slug: "v", customer_npub: PK, refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
     a.close?.();
     const b = new OrderStore({ path });
     assertEquals(b.get("o1")?.customer_npub, PK);
@@ -105,8 +106,8 @@ Deno.test("the npub is NOT in the customer-facing order body", () => {
 
 Deno.test("a stale queue entry cannot carry a DIFFERENT customer's npub", () => {
   const s = new OrderStore();
-  s.create("o1", { venue_slug: "v", customer_npub: PK }, MONEY);
-  s.create("o2", { venue_slug: "v", customer_npub: "b".repeat(64) }, MONEY);
+  s.create("o1", {  venue_slug: "v", customer_npub: PK, refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
+  s.create("o2", {  venue_slug: "v", customer_npub: "b".repeat(64), refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
   s.claimSettlement("o1", { quoteId: "q1" });
   s.claimSettlement("o2", { quoteId: "q2" });
   const q = s.queue();

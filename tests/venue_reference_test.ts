@@ -3,6 +3,7 @@ import { createRoute, type RouteDeps } from "../main.ts";
 import { OrderStore } from "../src/store.ts";
 import { ChallengeStore } from "../src/nip98.ts";
 import { type Catalog } from "../src/catalog.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 /**
  * ADR-0014 — the customer surface returns the venue's OWN order number once a
@@ -39,6 +40,7 @@ function deps(): RouteDeps {
 
 const createBody = {
   venue_slug: "three-buddies-berlin",
+  refund_bolt11: TEST_REFUND_BOLT11,
   items: [{ sku: "1052491", qty: 1, options: {} }],
   fulfilment: "pickup",
   inputs: { "contact.name": "p", "contact.phone": "+491700000000" },

@@ -22,6 +22,7 @@ import { ChallengeStore } from "../src/nip98.ts";
 import { type Order, type OrderMoney, OrderStore } from "../src/store.ts";
 import { FakeRail } from "../src/rail.ts";
 import { authHeader, challengeBoundEvent, facilitatorPubkey } from "./signing.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const T0 = 1_800_000_000;
 const ORIGIN = "https://cvm-pwa.example";
@@ -91,7 +92,7 @@ async function orderWithInvoice(
   rail: FakeRail,
   id: string,
 ): Promise<string> {
-  store.create(id, { venue_slug: "test-venue" }, money);
+  store.create(id, {  venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const invoice = await rail.createInvoice({
     sats: money.total,
     memo: `cvm-orders ${id}`,

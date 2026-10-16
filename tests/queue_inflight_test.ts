@@ -11,11 +11,13 @@
  */
 import { assertEquals } from "jsr:@std/assert@1";
 import { OrderStore } from "../src/store.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 /** Create an order and walk it to `state` through the legal transition table. */
 function makeOrder(store: any, id: string, state: string): any {
   const o = store.create(id, {
     venue_slug: "three-buddies-berlin",
+    refund_bolt11: TEST_REFUND_BOLT11,
     items: [],
     inputs: {},
     customer_npub: undefined,
@@ -31,7 +33,13 @@ function makeOrder(store: any, id: string, state: string): any {
     store.transition(id, "placed", { receipt: { venue_reference: "V-1" } });
     return store.get(id);
   }
-  if (state === "refunded") { store.transition(id, "refunded", { refund: { txid: "r" } }); return store.get(id); }
+  if (state === "refunded") {
+    // R1: a refunded order passes through the in-flight state, which only a
+    // mint-confirmed melt may leave — see src/refund.ts reconcileRefund().
+    store.transition(id, "refunding", {});
+    store.transition(id, "refunded", { refund: { txid: "r" } });
+    return store.get(id);
+  }
   throw new Error("unhandled state " + state);
 }
 
@@ -40,8 +48,10 @@ function order(id: string, state: string): any {
     id,
     state,
     venue_slug: "three-buddies-berlin",
+    refund_bolt11: TEST_REFUND_BOLT11,
     payload: {
       venue_slug: "three-buddies-berlin",
+      refund_bolt11: TEST_REFUND_BOLT11,
       items: [],
       inputs: {},
       settlement: { status: "settled", method: "bolt11" },

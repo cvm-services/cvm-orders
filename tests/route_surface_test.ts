@@ -24,12 +24,14 @@ import {
   type SettlementStatus,
 } from "../src/rail.ts";
 import type { Catalog } from "../src/catalog.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const T0 = 1_800_000_000_000;
 const ORIGIN = "https://cvm-pwa.example";
 
 const money = {
   venue_slug: "test-venue",
+  refund_bolt11: TEST_REFUND_BOLT11,
   items: [{
     sku: "100",
     name: "Pizza Margherita",
@@ -85,7 +87,7 @@ const post = (path: string, body: string): Request =>
 
 /** An order that has money and an invoice, ready for the settlement poll. */
 async function invoiceOrder(store: OrderStore, id: string, expiresAt = T0 + 900_000): Promise<OrderInvoice> {
-  store.create(id, {}, money);
+  store.create(id, { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const invoice: OrderInvoice = {
     bolt11: `lnbc10692n1${id}`,
     quoteId: `quote-${id}`,
@@ -168,13 +170,13 @@ Deno.test("an order that was never priced has no invoice to show", async () => {
 
 Deno.test("a rail that fails is 502; a rail that is missing is 503", async () => {
   const failing = app({ rail: new FailingRail(new RailError("mint returned http 500")) });
-  failing.store.create("o-r1", {}, money);
+  failing.store.create("o-r1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const err = await failing.handle(get("/orders/o-r1/invoice"));
   assertEquals(err.status, 502);
   assertEquals((await err.json() as { reason: string }).reason, "rail_error");
 
   const unavailable = app({ rail: new FailingRail(new RailUnavailableError("no rail today")) });
-  unavailable.store.create("o-r2", {}, money);
+  unavailable.store.create("o-r2", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const down = await unavailable.handle(get("/orders/o-r2/invoice"));
   assertEquals(down.status, 503);
   assertEquals((await down.json() as { reason: string }).reason, "rail_unavailable");

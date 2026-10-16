@@ -28,6 +28,7 @@ import {
   type SettlementStatus,
 } from "../src/rail.ts";
 import { authHeader, challengeBoundEvent, facilitatorPubkey } from "./signing.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const T0 = 1_800_000_000;
 const ORIGIN = "https://cvm-pwa.example";
@@ -101,6 +102,7 @@ const get = (path: string, headers: Record<string, string> = {}): Request =>
 /** Exactly what the shipped PWA sends for one Pizza Margherita, pickup. */
 const pwaRequest = (extra: Record<string, unknown> = {}) => ({
   venue_slug: "test-venue",
+  refund_bolt11: TEST_REFUND_BOLT11,
   items: [{ name: "Pizza Margherita", qty: 1, amount: 9.9, options: "House · Single" }],
   fulfilment: "pickup",
   inputs: { "contact.phone": "+4915112345678", "contact.name": "Ada" },
@@ -143,6 +145,7 @@ Deno.test("POST /orders ignores the client's amount in both directions", async (
   const { handle } = app();
   const cheap = await createOrder(handle, {
     venue_slug: "test-venue",
+    refund_bolt11: TEST_REFUND_BOLT11,
     items: [{ name: "Pizza Margherita", qty: 1, amount: 1, options: "House · Single" }],
     fulfilment: "pickup",
     inputs: {},
@@ -151,6 +154,7 @@ Deno.test("POST /orders ignores the client's amount in both directions", async (
 
   const inflated = await createOrder(handle, {
     venue_slug: "test-venue",
+    refund_bolt11: TEST_REFUND_BOLT11,
     items: [{ name: "Pizza Margherita", qty: 1, amount: 99_999_999, options: "House · Single" }],
     fulfilment: "pickup",
     inputs: {},
@@ -351,6 +355,7 @@ Deno.test("the shipped PWA's exact request works against the real committed cata
   // here would test the wrong thing.
   const { res, body } = await createOrder(handle, {
     venue_slug: "three-buddies-berlin",
+    refund_bolt11: TEST_REFUND_BOLT11,
     items: [{ name: "Capri Sun Kirsche 0,2l", qty: 1, amount: 1.62, options: "House,Single" }],
     fulfilment: "pickup",
     inputs: { "contact.phone": "+491****5678" },

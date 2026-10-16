@@ -501,11 +501,18 @@ export function createRoute(deps: RouteDeps): (req: Request) => Promise<Response
       // The catalog entry carries the venue's own ordering URL; `priceOrder`
       // has already proved it exists, so this cannot be undefined.
       const catalogVenue = catalog.venues.find((v) => v.venue_slug === priced.venue_slug)!;
+      // WHERE THE REFUND GOES (R1). This must be carried through explicitly: the
+      // payload below is rebuilt field-by-field, so anything not named here is
+      // silently DROPPED — and a dropped refund target means the store refuses
+      // the order (correctly) and the customer can never be paid back (not).
+      // The customer supplies it with the order, exactly like `contact.phone`.
+      const refundBolt11 = typeof body.refund_bolt11 === "string" ? body.refund_bolt11.trim() : "";
       const payload = {
         venue_slug: priced.venue_slug,
         fulfilment: priced.fulfilment,
         items: priced.lines,
         inputs,
+        refund_bolt11: refundBolt11,
         // The venue hand-off the facilitator console reads (custodyPlan):
         // payload.venue = { slug, rail, checkout_url }. Without this the console
         // showed "no venue checkout URL declared" for EVERY order, because the

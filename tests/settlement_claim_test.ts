@@ -13,6 +13,7 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { OrderStore, type OrderMoney } from "../src/store.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const money: OrderMoney = {
   venue_slug: "test-venue",
@@ -40,7 +41,7 @@ const tmpDb = async (label: string): Promise<string> => {
 
 /** An order with an invoice attached — the only state a claim can be made on. */
 async function orderWithInvoice(store: OrderStore, id: string, quote: string): Promise<void> {
-  store.create(id, { venue_slug: "test-venue" }, money);
+  store.create(id, {  venue_slug: "test-venue", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   await store.ensureInvoice(id, () =>
     Promise.resolve({
       bolt11: `lnbc106920n1${quote}`,

@@ -9,6 +9,7 @@
  */
 import { assertEquals, assertThrows } from "jsr:@std/assert@1";
 import { InvalidTransitionError, type OrderState, OrderStore, StaleOrderStateError } from "../src/store.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const money = {
   venue_slug: "test-venue",
@@ -22,7 +23,7 @@ const money = {
 
 Deno.test("create() never yields a paid order", () => {
   const store = new OrderStore();
-  const order = store.create("o-1", { item: "pizza" }, money);
+  const order = store.create("o-1", { item: "pizza", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   assertEquals(order.state, "awaiting_payment");
   assertEquals(store.get("o-1")?.state, "awaiting_payment");
   assertEquals(store.queue(), [], "an unverified order is not paid work");
@@ -30,7 +31,7 @@ Deno.test("create() never yields a paid order", () => {
 
 Deno.test("the money fields travel with the order, so the invoice has a server-side total", () => {
   const store = new OrderStore();
-  const order = store.create("o-m1", { item: "pizza" }, money);
+  const order = store.create("o-m1", { item: "pizza", refund_bolt11: TEST_REFUND_BOLT11 }, money);
   assertEquals(order.venue_slug, "test-venue");
   assertEquals(order.subtotal, 9900);
   assertEquals(order.fee, 792);
@@ -42,13 +43,13 @@ Deno.test("the money fields travel with the order, so the invoice has a server-s
 
 Deno.test("awaiting_payment is paid or expired; expired is terminal", () => {
   const store = new OrderStore();
-  store.create("o-e1", {}, money);
+  store.create("o-e1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   assertEquals(store.transition("o-e1", "expired", { from: "awaiting_payment" }).state, "expired");
   assertThrows(() => store.transition("o-e1", "paid"), InvalidTransitionError, undefined, "no resurrection");
   assertEquals(store.get("o-e1")?.state, "expired");
 
   // The paid edge is legal at the store level (the route is the gate) ...
-  store.create("o-e2", {}, money);
+  store.create("o-e2", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   assertEquals(store.transition("o-e2", "paid", { from: "awaiting_payment" }).state, "paid");
   // ... and a second compare-and-set on it loses, which is how "exactly once" holds.
   assertThrows(
@@ -68,7 +69,7 @@ Deno.test("awaiting_payment is paid or expired; expired is terminal", () => {
 
 Deno.test("ensureInvoice creates one invoice per order, sharing it with concurrent callers", async () => {
   const store = new OrderStore();
-  store.create("o-i1", {}, money);
+  store.create("o-i1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   let calls = 0;
   const factory = () => {
     calls++;
@@ -102,7 +103,7 @@ Deno.test("ensureInvoice creates one invoice per order, sharing it with concurre
 
 Deno.test("a failed invoice stays unset, so the next call can try again", async () => {
   const store = new OrderStore();
-  store.create("o-i2", {}, money);
+  store.create("o-i2", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   let calls = 0;
   const flaky = () => {
     calls++;
@@ -134,7 +135,7 @@ async function assertThrowsAsync(fn: () => Promise<unknown>, message: string): P
 
 Deno.test("a lifecycle that assumed create() meant paid is now explicit", () => {
   const store = new OrderStore();
-  store.create("o-l1", {}, money);
+  store.create("o-l1", { refund_bolt11: TEST_REFUND_BOLT11 }, money);
   const states: OrderState[] = ["paid", "placing", "placed", "ready"];
   for (const state of states) {
     const from = state === "paid" ? "awaiting_payment" : undefined;

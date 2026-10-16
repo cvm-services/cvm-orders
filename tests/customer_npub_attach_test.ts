@@ -10,6 +10,7 @@
  */
 import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import { OrderStore } from "../src/store.ts";
+import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
 
 const A = "a".repeat(64);
 const B = "b".repeat(64);
@@ -32,7 +33,7 @@ const MONEY = {
 
 function fresh() {
   const s = new OrderStore();
-  s.create("o1", { venue_slug: "v" }, MONEY);
+  s.create("o1", { venue_slug: "v", refund_bolt11: TEST_REFUND_BOLT11 }, MONEY);
   return s;
 }
 

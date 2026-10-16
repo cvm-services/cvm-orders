@@ -46,6 +46,7 @@ export type OrderState =
   | "placing"
   | "placed"
   | "ready"
+  | "refunding"
   | "refunded";
 
 /** States nothing can leave. A restart must not resurrect one. */
@@ -180,7 +181,15 @@ export interface TransitionMeta {
  *                 was written.
  *   missing     — no such order.
  */
-export type ClaimOutcome = "won" | "lost" | "proof_spent" | "missing";
+export type ClaimOutcome =
+  | "won"
+  | "lost"
+  | "proof_spent"
+  | "missing"
+  // R1: the order has no refund invoice recorded, so its sats must NOT be
+  // claimed — we would have no way to give them back. The invoice is left
+  // unsettled and the order stays awaiting_payment.
+  | "no_refund_target";
 
 export interface SettlementClaim {
   /** The rail's quote/payment request — the settlement proof's identity. */
@@ -195,8 +204,13 @@ const transitions: Record<OrderState, OrderState[]> = {
   // it); the ROUTE gates it on a rail verdict AND takes it through
   // `claimSettlement()`, which is exactly-once across processes — see main.ts.
   awaiting_payment: ["paid", "expired"],
-  paid: ["placing", "refunded"],
-  placing: ["placed", "refunded"],
+  paid: ["placing", "refunding"],
+  placing: ["placed", "refunding"],
+  // `refunding` is the IN-FLIGHT refund: we have quoted a melt but the mint has
+  // not confirmed it yet. It exists so "we owe you sats" is a distinct, visible
+  // state from "we paid you back" — conflating them is how a label becomes a
+  // lie (the old console set `refunded` with no melt behind it).
+  refunding: ["refunded"],
   placed: ["ready"],
   ready: [],
   refunded: [],
@@ -204,6 +218,13 @@ const transitions: Record<OrderState, OrderState[]> = {
   // and nothing to place.
   expired: [],
 };
+
+/**
+ * Sentinel stored in `refund_melt_quote` while a refund melt is being reserved
+ * but the mint has not yet returned a quote id. Distinguishes "someone is
+ * melting right now" from "here is the quote to poll".
+ */
+const REFUND_PENDING = "__refund_pending__";
 
 const RECEIPT_FIELDS = new Set([
   "venue_reference",
@@ -279,6 +300,13 @@ const ADDED_COLUMNS: Array<[string, string]> = [
   ["settlement_claim", "TEXT"],
   ["settled_at", "TEXT"],
   ["customer_npub", "TEXT"],
+  // Refund leg (R1). `refund_bolt11` is where the money goes back; without it a
+  // refund is impossible, so its absence refuses the order at creation.
+  // `refund_melt_quote` is the exactly-once claim for the melt, mirroring
+  // `settlement_claim` on the way in.
+  ["refund_bolt11", "TEXT"],
+  ["refund_melt_quote", "TEXT"],
+  ["refunded_at", "TEXT"],
 ];
 
 export interface OrderStoreOptions {
@@ -315,6 +343,19 @@ interface OrderRow {
  * so a single process cannot interleave two writers on the JS side, and the
  * `BEGIN IMMEDIATE` transactions are what make two PROCESSES safe.
  */
+/**
+ * A BOLT11 invoice, as far as we can tell without decoding it. Deliberately loose
+ * (the mint does the real validation when it reads the invoice) but strict enough
+ * to stop a placeholder, an empty string or a stray URL being stored as the
+ * destination for someone's money.
+ */
+export function looksLikeBolt11(value: string): boolean {
+  const s = value.trim().toLowerCase();
+  if (!/^ln(bc|tb|bcrt)[0-9a-z]+$/.test(s)) return false;
+  // BOLT11 is bech32: at least the human-readable prefix, a separator and data.
+  return s.length >= 20;
+}
+
 export class OrderStore {
   readonly #db: DatabaseSync;
   /** One in-flight invoice per order, so concurrent callers share a rail call. */
@@ -414,6 +455,31 @@ export class OrderStore {
     }
     assertNoCardMaterial(payload, "payload");
     if (money) assertNoCardMaterial(money, "order-money");
+
+    // MONEY-SAFETY (R1): a refund target, when supplied, must be PAYABLE. A
+    // present-but-garbage value is refused outright — storing an unpayable
+    // destination for someone's money is worse than storing none, because it
+    // looks like a plan.
+    //
+    // NOTE ON SCOPE: creation does NOT require the target. Requiring it here
+    // would also break orders that are legitimately created without one yet —
+    // a facilitator-made order, or an order whose refund invoice arrives later
+    // via `setRefundTarget()`. The binding rule lives at the EDGE that accepts
+    // money (the settle/claim path): no target, no claimed sats. That is where
+    // "we must be able to give it back" is enforced.
+    // The validated target is then STORED with the order, in the same INSERT, so
+    // the refund destination can never be separated from the order that owes it.
+    let refundTarget: string | null = null;
+    if (money) {
+      const rawTarget = (payload && typeof payload === "object" && !Array.isArray(payload))
+        ? (payload as Record<string, unknown>).refund_bolt11
+        : undefined;
+      const target = typeof rawTarget === "string" ? rawTarget.trim() : "";
+      if (target && !looksLikeBolt11(target)) {
+        throw new Error(`order refused: refund_bolt11 is not a lightning invoice (starts "${target.slice(0, 12)}")`);
+      }
+      refundTarget = target || null;
+    }
     // Validate before anything is written: a malformed npub must fail the order,
     // not be stored and discovered later by the facilitator's DM tool (ADR-0018).
     const rawNpub = (payload && typeof payload === "object" && !Array.isArray(payload))
@@ -436,8 +502,8 @@ export class OrderStore {
       this.#db.prepare(
         `INSERT INTO orders (id, state, payload, venue_slug, items, subtotal, fee, total,
                              fulfilment, inputs, customer_npub, invoice, receipt,
-                             created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)`,
+                             refund_bolt11, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?, ?)`,
       ).run(
         id,
         order.state,
@@ -450,6 +516,7 @@ export class OrderStore {
         order.fulfilment ?? null,
         order.inputs ? JSON.stringify(order.inputs) : null,
         order.customer_npub ?? null,
+        refundTarget,
         now,
         now,
       );
@@ -545,6 +612,112 @@ export class OrderStore {
   }
 
   /**
+   * Record where a refund should be sent. The order must not yet be refunded —
+   * changing the destination after money moved would be meaningless.
+   */
+  setRefundTarget(id: string, bolt11: string): Order {
+    const target = (bolt11 ?? "").trim();
+    if (!looksLikeBolt11(target)) {
+      throw new Error(`refund target is not a lightning invoice (starts "${target.slice(0, 12)}")`);
+    }
+    const row = this.#db.prepare("SELECT * FROM orders WHERE id = ?").get(id) as OrderRow | undefined;
+    if (!row) throw new OrderNotFoundError();
+    if (isTerminal(row.state as OrderState)) {
+      throw new InvalidTransitionError(row.state as OrderState, "refunding");
+    }
+    this.#db.prepare("UPDATE orders SET refund_bolt11 = ?, updated_at = ? WHERE id = ?")
+      .run(target, new Date().toISOString(), id);
+    const out = this.get(id);
+    if (!out) throw new OrderNotFoundError();
+    return out;
+  }
+
+  /** Where a refund for this order would go, or null when none is recorded. */
+  refundTargetFor(id: string): string | null {
+    const row = this.#db.prepare("SELECT refund_bolt11 FROM orders WHERE id = ?").get(id) as
+      | { refund_bolt11: string | null }
+      | undefined;
+    if (!row) throw new OrderNotFoundError();
+    return row.refund_bolt11 ? String(row.refund_bolt11) : null;
+  }
+
+  /**
+   * Reserve the ONE refund melt for this order.
+   *
+   * This is an INTENT latch, and it is deliberately separate from the quote id.
+   * The obvious design — claim the quote id after asking the mint — is broken
+   * under concurrency: two racing tasks both read the column as null while
+   * awaiting the network, so both ask for a melt and the customer is paid twice.
+   * (Caught by the I4 race test, 2026-10-15.) Reserving the INTENT first, in a
+   * synchronous BEGIN IMMEDIATE, means only one caller can ever reach the mint.
+   *
+   * The sentinel `pending` marks "someone is melting"; `recordRefundQuote()`
+   * replaces it with the real quote id. A transient mint failure calls
+   * `releaseRefundReservation()` so the order stays refundable.
+   */
+  reserveRefundMelt(id: string): { won: boolean; quoteId: string | null } {
+    this.#db.exec("BEGIN IMMEDIATE");
+    try {
+      const row = this.#db.prepare("SELECT state, refund_melt_quote FROM orders WHERE id = ?").get(id) as
+        | { state: string; refund_melt_quote: string | null }
+        | undefined;
+      if (!row) throw new OrderNotFoundError();
+      const existing = row.refund_melt_quote ? String(row.refund_melt_quote) : null;
+      if (existing) {
+        this.#db.exec("COMMIT");
+        // `pending` means a racer is mid-melt and has no id yet — the caller must
+        // NOT proceed to quote. A real id means it can poll that quote.
+        return { won: false, quoteId: existing === REFUND_PENDING ? null : existing };
+      }
+      if (row.state === "refunded") {
+        this.#db.exec("COMMIT");
+        return { won: false, quoteId: null };
+      }
+      this.#db.prepare("UPDATE orders SET refund_melt_quote = ?, updated_at = ? WHERE id = ?")
+        .run(REFUND_PENDING, new Date().toISOString(), id);
+      this.#db.exec("COMMIT");
+      return { won: true, quoteId: null };
+    } catch (e) {
+      this.#db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
+  /** Attach the mint's real quote id to an already-won reservation. */
+  recordRefundQuote(id: string, quoteId: string): void {
+    const q = (quoteId ?? "").trim();
+    if (!q) throw new Error("refund quote id is required");
+    this.#db.prepare("UPDATE orders SET refund_melt_quote = ?, updated_at = ? WHERE id = ?")
+      .run(q, new Date().toISOString(), id);
+  }
+
+  /**
+   * Give the reservation back after a transient failure (mint unreachable, no
+   * quote id returned). Without this a single blip would bar the order from ever
+   * being refunded. Only clears a reservation still in the `pending` sentinel —
+   * never a recorded quote, which may be mid-payment at the mint.
+   */
+  releaseRefundReservation(id: string): void {
+    this.#db.prepare(
+      "UPDATE orders SET refund_melt_quote = NULL, updated_at = ? WHERE id = ? AND refund_melt_quote = ?",
+    ).run(new Date().toISOString(), id, REFUND_PENDING);
+  }
+
+  /**
+   * The melt quote this order's refund is using, if one was claimed.
+   * Returns null while a reservation is still in flight — the sentinel is an
+   * internal marker, never a quote a caller could poll.
+   */
+  refundMeltQuote(id: string): string | null {
+    const row = this.#db.prepare("SELECT refund_melt_quote FROM orders WHERE id = ?").get(id) as
+      | { refund_melt_quote: string | null }
+      | undefined;
+    if (!row) throw new OrderNotFoundError();
+    const v = row.refund_melt_quote ? String(row.refund_melt_quote) : null;
+    return v === REFUND_PENDING ? null : v;
+  }
+
+  /**
    * Compare-and-set transition. Everything is validated before anything is
    * written, so a rejected transition leaves the order byte-identical (state
    * *and* receipt), and a receipt accepted with a transition lands in the same
@@ -616,6 +789,20 @@ export class OrderStore {
       if (to === "paid") {
         if (!claim.quoteId) {
           throw new Error("a settlement claim needs the payment request it settles");
+        }
+        // THE BINDING MONEY RULE (R1). This is the edge that accepts money, so
+        // this is where "we must be able to give it back" is enforced: an order
+        // whose sats are settling must have somewhere to send a refund. Absence
+        // is checked HERE rather than at creation because an order may legally
+        // be created before its refund invoice is known (a facilitator-made
+        // order, or one whose target arrives via setRefundTarget()).
+        //
+        // Refusing here means the sats are never claimed, so nothing is owed and
+        // nothing can be stranded — the customer's invoice simply goes unsettled.
+        const target = this.refundTargetFor(id);
+        if (!target) {
+          this.#db.exec("ROLLBACK");
+          return "no_refund_target";
         }
         const owner = this.#db
           .prepare("SELECT order_id FROM settlement_proofs WHERE quote_id = ?")
