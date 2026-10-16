@@ -28,25 +28,55 @@ import { assertEquals, assertRejects } from "jsr:@std/assert@1";
 import { OrderStore, type OrderMoney } from "../src/store.ts";
 import { reconcileRefund, RefundError, type RefundRails } from "../src/refund.ts";
 import { TEST_REFUND_BOLT11 } from "./helpers/refund_fixture.ts";
+import type { MeltProof } from "../src/melt_authorize.ts";
 
-/** Minimal fake rail: records melts, lets the test decide what the mint says. */
+/**
+ * Fake rail: records melts, and RECORDS THE SPEND.
+ *
+ * It now implements `authorizeMelt`/`spendableFor`, because a rail that can only
+ * quote cannot refund — and the previous version of this double was the reason a
+ * missing payment step went unnoticed. Its `state` is still settable, because the
+ * MINT'S ANSWER is legitimately the test's to choose; what is no longer the test's
+ * to fake is whether we sent a payment.
+ */
 class FakeRefundRails implements RefundRails {
   melts: Array<{ request: string; memo?: string }> = [];
+  /** Every spend we were asked to make. Asserted on in the spend tests. */
+  spends: Array<{ quoteId: string; amount: number; feeReserve: number; proofs: number }> = [];
   /** What `checkMelt` reports for the most recent quote. */
   state: "unpaid" | "pending" | "paid" = "unpaid";
   quoteId = "melt-quote-1";
   throwOnQuote = false;
   throwOnCheck = false;
+  throwOnSpend = false;
 
   async meltQuote(req: { request: string; memo?: string }) {
     if (this.throwOnQuote) throw new Error("mint unreachable");
     this.melts.push(req);
-    return { quoteId: this.quoteId, request: req.request, state: this.state, expiresAt: null };
+    return { quoteId: this.quoteId, request: req.request, state: this.state, amount: 1500, feeReserve: 15 };
   }
 
   async checkMelt(_quoteId: string) {
     if (this.throwOnCheck) throw new Error("mint unreachable");
     return this.state;
+  }
+
+  async authorizeMelt(req: { quoteId: string; amount: number; feeReserve: number; proofs: MeltProof[] }) {
+    if (this.throwOnSpend) throw new Error("mint unreachable mid-spend");
+    this.spends.push({
+      quoteId: req.quoteId,
+      amount: req.amount,
+      feeReserve: req.feeReserve,
+      proofs: req.proofs.length,
+    });
+    return { state: "PENDING" };
+  }
+
+  async spendableFor() {
+    return {
+      proofs: [{ amount: 1515, id: "keyset-1", secret: "s".repeat(32), C: "02" + "a".repeat(64) }] as MeltProof[],
+      ladder: [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024],
+    };
   }
 }
 

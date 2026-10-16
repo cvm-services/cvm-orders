@@ -19,6 +19,7 @@
  */
 
 import type { OrderStore } from "./store.ts";
+import { MeltAuthorizeError, type MeltProof } from "./melt_authorize.ts";
 
 /** A refund failed in a way the caller should surface (and may retry). */
 export class RefundError extends Error {
@@ -32,6 +33,21 @@ export class RefundError extends Error {
 export interface RefundRails {
   meltQuote(req: { request: string; memo?: string }): Promise<{ quoteId: string; state: string }>;
   checkMelt(quoteId: string): Promise<"unpaid" | "pending" | "paid">;
+  /**
+   * NUT-05 step 2 — SPEND the proofs. Optional in the type so existing doubles
+   * keep compiling, but a rails object without it CANNOT refund: a quote and a
+   * poll are not a payment. `reconcileRefund` fails loudly rather than quoting
+   * forever, which is the bug this whole module was written to fix.
+   */
+  authorizeMelt?(req: {
+    quoteId: string;
+    amount: number;
+    feeReserve: number;
+    proofs: MeltProof[];
+    ladder: number[];
+  }): Promise<{ state: string | null }>;
+  /** The proofs held for this order, and the mint's denomination ladder. */
+  spendableFor?(orderId: string): Promise<{ proofs: MeltProof[]; ladder: number[] }>;
 }
 
 export interface RefundResult {
@@ -91,6 +107,12 @@ export async function reconcileRefund(
     );
   }
 
+  // The quote carries the funding requirement (invoice amount + fee reserve).
+  // Null means "this rail did not tell us" — the spend step then relies on the
+  // rail's own underfunding check rather than inventing a number.
+  let quotedAmount: number | null = null;
+  let quotedFeeReserve: number | null = null;
+
   // --- the melt, exactly once ------------------------------------------------
   //
   // ORDER MATTERS AND IS NOT OBVIOUS. The latch must be claimed BEFORE the
@@ -99,8 +121,12 @@ export async function reconcileRefund(
   // quote would let both mint a melt — a double refund, the exact bug this
   // module exists to prevent. Reserving the intent first makes it impossible.
   let quoteId = store.refundMeltQuote(orderId);
+  // Held so the SPEND step can tell "I created this quote, so I must pay it" apart
+  // from "someone else owns it, so I only poll". Undefined means we are polling a
+  // quote that was already recorded.
+  let reservation: { won: boolean; quoteId: string | null } | undefined;
   if (!quoteId) {
-    const reservation = store.reserveRefundMelt(orderId);
+    reservation = store.reserveRefundMelt(orderId);
     if (!reservation.won) {
       // A racer owns the melt. Two sub-cases, and neither may start a melt:
       //   * it has a quote id -> we can poll that same quote below;
@@ -115,7 +141,7 @@ export async function reconcileRefund(
   }
 
   if (!quoteId) {
-    let quoted: { quoteId: string; state: string };
+    let quoted: { quoteId: string; state: string; amount?: number; feeReserve?: number };
     try {
       // No amount is sent: the mint reads the bolt11, so the amount can never
       // disagree with the customer's own invoice.
@@ -132,6 +158,55 @@ export async function reconcileRefund(
     }
     store.recordRefundQuote(orderId, quoted.quoteId);
     quoteId = quoted.quoteId;
+    quotedAmount = quoted.amount ?? null;
+    quotedFeeReserve = quoted.feeReserve ?? null;
+  }
+
+  // --- SPEND IT (NUT-05 step 2) ----------------------------------------------
+  //
+  // THE STEP THAT WAS MISSING. Before this, we quoted a melt and polled it
+  // forever: the mint had never been handed any proofs, so the invoice could not
+  // be paid and the customer received nothing. A quote is not a payment.
+  //
+  // Authorising is attempted once, guarded by the same durable quote id: if the
+  // quote already exists we do NOT re-authorise, because proofs are bearer money
+  // and re-POSTing them after a timeout is how a double-spend is manufactured.
+  // After a timeout the only safe move is to ASK the mint (checkMelt below).
+  if (reservation?.won) {
+    // We won the latch, so we created this quote and we are the one to spend it.
+    if (!rails.authorizeMelt || !rails.spendableFor) {
+      // Refuse rather than loop. A rails object that cannot spend must not be
+      // allowed to look like a successful refund orchestration.
+      throw new RefundError(
+        `refund for ${orderId} cannot proceed: this rail cannot authorise a melt ` +
+          `(no authorizeMelt/spendableFor), so the customer's sats could never be returned`,
+      );
+    }
+    let spendable: { proofs: MeltProof[]; ladder: number[] };
+    try {
+      spendable = await rails.spendableFor(orderId);
+    } catch (e) {
+      store.releaseRefundReservation(orderId);
+      throw new RefundError(`refund for ${orderId}: could not load the proofs to spend: ${(e as Error).message}`, e);
+    }
+    try {
+      // The quote tells us amount + fee_reserve; the rail refuses if underfunded.
+      await rails.authorizeMelt({
+        quoteId,
+        amount: quotedAmount ?? 0,
+        feeReserve: quotedFeeReserve ?? 0,
+        proofs: spendable.proofs,
+        ladder: spendable.ladder,
+      });
+    } catch (e) {
+      // Do NOT release the reservation here: the mint may have spent the proofs
+      // before failing to answer, so the quote must stay attached and be resolved
+      // by checkMelt. Releasing would let a later pass authorise a SECOND time.
+      if (e instanceof MeltAuthorizeError && (e.status ?? 0) >= 400) {
+        throw new RefundError(`refund melt rejected for ${orderId} (quote ${quoteId}): ${e.message}`, e);
+      }
+      // Transport failure: fall through to checkMelt, which is authoritative.
+    }
   }
 
   // --- the only thing that may authorise `refunded` --------------------------
