@@ -72,20 +72,21 @@ export class MeltAuthorizeError extends Error {
 export function blankOutputs(
   feeReserve: number,
   ladder: number[],
-): Array<{ amount: number; B_: string; r: bigint; secret: Uint8Array }> {
+  keysetId?: string,
+): Array<{ amount: number; id?: string; B_: string; r: bigint; secret: Uint8Array }> {
   if (feeReserve <= 0) return [];
   // A binary decomposition of the reserve: the change can be any sum of these.
   const amounts = splitAmounts(feeReserve, ladder);
-  const outs = amounts.map((amount) => {
+  // `id` is required per output by cdk-mintd 0.18, same as the mint path.
+  const mk = (amount: number) => {
     const secret = deriveSecret();
     const b = blindMessage(secret);
-    return { amount, B_: Buffer.from(b.B).toString("hex"), r: b.r, secret };
-  });
+    return { amount, ...(keysetId ? { id: keysetId } : {}), B_: Buffer.from(b.B).toString("hex"), r: b.r, secret };
+  };
+  const outs = amounts.map((amount) => mk(amount));
   // One extra output of amount 1 covers an exact-fee case where the mint still
   // wants somewhere to send a zero-remainder signature.
-  const secret = deriveSecret();
-  const b = blindMessage(secret);
-  outs.push({ amount: 1, B_: Buffer.from(b.B).toString("hex"), r: b.r, secret });
+  outs.push(mk(1));
   return outs;
 }
 
@@ -109,6 +110,8 @@ export async function authorizeMelt(
     proofs: MeltProof[];
     /** The sat denomination ladder, for blank outputs. */
     ladder: number[];
+    /** The keyset id every output must carry (required by cdk-mintd 0.18). */
+    keysetId?: string;
   },
 ): Promise<MeltAuthorizeResult> {
   const { quoteId, amount, feeReserve, proofs } = opts;
@@ -132,7 +135,7 @@ export async function authorizeMelt(
   }
 
   // Ask for change so an over-reserved fee is not silently kept by the mint.
-  const blanks = blankOutputs(feeReserve, opts.ladder);
+  const blanks = blankOutputs(feeReserve, opts.ladder, opts.keysetId);
 
   const res = await fetchImpl(`${base}/v1/melt/bolt11`, {
     method: "POST",
@@ -140,7 +143,16 @@ export async function authorizeMelt(
     body: JSON.stringify({
       quote: quoteId,
       inputs: proofs.map((p) => ({ amount: p.amount, id: p.id, secret: p.secret, C: p.C })),
-      outputs: blanks.map((b) => ({ amount: b.amount, B_: b.B_ })),
+      // `id` is REQUIRED on melt outputs too — the same defect as the mint path,
+      // one layer deeper. Without it the real mint answers 400 "Invalid payment
+      // request" (measured: no outputs -> PAID; outputs with id -> accepted;
+      // outputs without id -> Invalid payment request). blankOutputs() computes the
+      // id, so dropping it here was silently discarding it.
+      outputs: blanks.map((b) => ({
+        amount: b.amount,
+        ...(b.id ? { id: b.id } : {}),
+        B_: b.B_,
+      })),
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });

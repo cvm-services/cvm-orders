@@ -13,6 +13,7 @@
  */
 import { assert, assertEquals } from "jsr:@std/assert@1";
 import { claimEcash } from "../src/ecash_client.ts";
+import { wireToRaw, wireToSecret } from "../src/ecash.ts";
 import { secp256k1 } from "jsr:@noble/curves@1/secp256k1";
 
 /**
@@ -86,7 +87,20 @@ Deno.test("claimEcash posts the quote + blinded outputs and returns unblinded pr
   // Every proof carries the keyset id and a 33-byte C.
   for (const p of out.proofs) {
     assert(/^[0-9a-f]{66}$/.test(p.C), "C must be 33-byte compressed hex");
-    assert(/^[0-9a-f]{64}$/.test(p.secret), "secret must be 32-byte hex");
+    // The secret is a NUT-00 STRING (base64url of the raw bytes), NOT a hex dump.
+    // This line used to require /^[0-9a-f]{64}$/ — it pinned the bug that made every
+    // proof unspendable at a real mint, because the mint hashes the string it
+    // receives while we had blinded over the raw bytes behind a hex dump.
+    assert(typeof p.secret === "string" && p.secret.length > 0, "the secret travels as a string");
+    assert(!/^[0-9a-f]{64}$/.test(p.secret), "it must NOT be a 64-char hex dump of 32 bytes");
+    assert(
+      wireToRaw(p.secret).length === 32,
+      "and its raw entropy is still 32 bytes (the wire form is longer by design)",
+    );
+    assert(
+      wireToSecret(p.secret).length === p.secret.length,
+      "while the HASHED form is utf8 of the string itself — that is what the mint hashes",
+    );
   }
 });
 

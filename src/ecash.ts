@@ -65,6 +65,67 @@ export function deriveSecret(): Uint8Array {
   return randomBytes(32);
 }
 
+/**
+ * THE CANONICAL SECRET FORM — the fix for "Token not verified".
+ *
+ * NUT-00: a proof's `secret` is a UTF-8 **string**, and the mint checks
+ * `C == hash_to_curve(secret) * k` by hashing THE STRING IT RECEIVED. So the bytes
+ * we blind over must be exactly the bytes the mint will hash — i.e. the UTF-8
+ * encoding of the wire string, not the raw random bytes behind it.
+ *
+ * This was the bug: we blinded over 32 raw random bytes, then sent their 64-char
+ * HEX as the secret. The mint hashed 64 characters; we had hashed 32 bytes. `Y`
+ * differed, the unblinded `C` failed `C == Y^k`, and the mint refused to spend a
+ * proof it had just signed ("Token not verified").
+ *
+ * So the wire form is base64url of the raw bytes: it is a string (as NUT-00 wants),
+ * it is ASCII-safe in JSON, and `wireToSecret(secretToWire(s))` returns the SAME
+ * bytes — which is the property the whole pipeline depends on.
+ */
+export function secretToWire(secret: Uint8Array): string {
+  return base64urlEncode(secret);
+}
+
+/**
+ * THE BYTES A REAL MINT HASHES — measured, not assumed.
+ *
+ * A cdk-mintd mint verifies `C == hash_to_curve(secret) * k` by hashing the UTF-8
+ * of the secret STRING it received over the wire. So the bytes we blind over must be
+ * `utf8(wireString)` — NOT the raw bytes behind it.
+ *
+ * Settled empirically against a live mint with a three-way experiment (mint one
+ * proof per candidate, try to spend each):
+ *   * blind over RAW bytes, send base64url  -> "Token not verified"  (our bug)
+ *   * blind over utf8(base64url), send that -> PAID
+ *   * blind over utf8(hex), send that       -> PAID
+ * Both working cases share the one property that matters: the bytes hashed at blind
+ * time are the UTF-8 of the string that travels. Any self-consistent encoding works;
+ * what fails is hashing bytes that are not recoverable from the wire string.
+ */
+export function wireToSecret(wire: string): Uint8Array {
+  return new TextEncoder().encode(wire);
+}
+
+/** The raw entropy behind a wire secret (for storage/uniqueness checks only). */
+export function wireToRaw(wire: string): Uint8Array {
+  return base64urlDecode(wire);
+}
+
+function base64urlEncode(bytes: Uint8Array): string {
+  let bin = "";
+  for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64urlDecode(text: string): Uint8Array {
+  const b64 = text.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+  const bin = atob(padded);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 export interface Blinded {
   /** The blinded message B = Y + r*G, 33 compressed bytes, hex on the wire. */
   B: Uint8Array;
@@ -75,7 +136,10 @@ export interface Blinded {
 
 /** Step 1 (client): blind the secret so the mint signs without seeing it. */
 export function blindMessage(secret: Uint8Array, r?: bigint): Blinded {
-  const Y = hashToCurve(secret);
+  // Hash the bytes the MINT will hash: the UTF-8 of the secret string that will
+  // travel. Hashing the raw entropy instead is the bug that made every proof we
+  // minted unspendable ("Token not verified") while our own doubles stayed green.
+  const Y = hashToCurve(wireToSecret(secretToWire(secret)));
   const rr = r ?? bytesToNumberBE(randomBytes(32)) % secp256k1.CURVE.n;
   const rG = secp256k1.ProjectivePoint.BASE.multiply(rr);
   const B = Y.add(rG);
@@ -116,7 +180,9 @@ export function constructProof(
   return {
     amount,
     C: Buffer.from(c).toString("hex"),
-    secret: Buffer.from(secret).toString("hex"),
+    // MUST be the wire form: the mint hashes this string, and our `Y` came from
+    // the same bytes (see secretToWire). A hex dump here breaks C == Y^k.
+    secret: secretToWire(secret),
     ...(keysetId ? { id: keysetId } : {}),
   } as EcashProof;
 }

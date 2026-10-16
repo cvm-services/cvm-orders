@@ -49,7 +49,14 @@ export async function claimEcash(
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({
       quote: quoteId,
-      outputs: blinded.map((b) => ({ amount: b.amount, B_: Buffer.from(b.B).toString("hex") })),
+      // `id` (the keyset id) is REQUIRED per output by cdk-mintd 0.18: omitting it
+      // is a 422 "missing field `id`". Found against a real mint — the fake keyset
+      // in the unit tests never enforced it, so this only surfaced live.
+      outputs: blinded.map((b) => ({
+        amount: b.amount,
+        id: keyset.id,
+        B_: Buffer.from(b.B).toString("hex"),
+      })),
     }),
     signal: AbortSignal.timeout(timeoutMs),
   });

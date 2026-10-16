@@ -11,7 +11,7 @@
  */
 import { secp256k1 } from "jsr:@noble/curves@1/secp256k1";
 import { sha256 } from "jsr:@noble/hashes@1/sha256";
-import { hashToCurve } from "../../src/ecash.ts";
+import { hashToCurve, wireToSecret } from "../../src/ecash.ts";
 
 export interface BlindOutput {
   amount: number;
@@ -20,7 +20,14 @@ export interface BlindOutput {
 
 export interface FakeProof {
   amount: number;
-  secret: Uint8Array;
+  /**
+   * The WIRE secret: a string, exactly as NUT-00 defines it and as the real mint
+   * receives it. It used to be `Uint8Array`, which let this double hash the same
+   * bytes we blinded with — so it could never catch a wire/reality mismatch, and
+   * every proof we minted stayed unspendable against a real mint ("Token not
+   * verified") while the suite stayed green.
+   */
+  secret: string;
   C: Uint8Array;
 }
 
@@ -60,7 +67,9 @@ export class FakeCashuMint {
     return proofs.every(({ amount, secret, C }) => {
       const k = this.#privkeys.get(amount);
       if (!k) return false;
-      const Y = hashToCurve(secret);
+      // Hash the string the way a REAL mint does: over the UTF-8 bytes of the wire
+      // secret. Never re-derive it from anything local — that is what hid the bug.
+      const Y = hashToCurve(wireToSecret(secret));
       const expected = Y.multiply(k);
       const got = secp256k1.ProjectivePoint.fromHex(Buffer.from(C).toString("hex"));
       return expected.equals(got);

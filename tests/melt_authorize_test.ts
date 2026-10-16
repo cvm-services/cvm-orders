@@ -113,6 +113,9 @@ Deno.test("M4: blank outputs are sent so a fee-reserve overpayment is NOT strand
     feeReserve: 16,
     proofs: proofsWorth(116),
     ladder: LADDER,
+    // A real mint requires the keyset id on every output (measured); the test must
+    // exercise the shape that actually works, not the one that 400s.
+    keysetId: "keyset-1",
   });
 
   assert(Array.isArray(calls[0].body.outputs) && calls[0].body.outputs.length > 0,
@@ -120,6 +123,10 @@ Deno.test("M4: blank outputs are sent so a fee-reserve overpayment is NOT strand
   for (const o of calls[0].body.outputs) {
     assert(typeof o.B_ === "string" && o.B_.length > 0, "each blank output needs a blinded message");
     assert(typeof o.amount === "number", "each blank output needs an amount");
+    // Measured against a real mint: an output WITHOUT `id` is rejected with
+    // 400 "Invalid payment request", while the same request with `id` is accepted.
+    // blankOutputs() computes it, so the request must not drop it.
+    assertEquals(o.id, "keyset-1", "each blank output must carry the keyset id");
   }
   // The blinding factors come back so the caller can actually unblind the change.
   assertEquals(res.changeBlindings.length, calls[0].body.outputs.length,

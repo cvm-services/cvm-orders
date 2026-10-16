@@ -14,6 +14,7 @@ import {
   blindMessage,
   constructProof,
   deriveSecret,
+  secretToWire,
   splitAmounts,
   verifyBlindSignature,
 } from "../src/ecash.ts";
@@ -87,7 +88,9 @@ Deno.test("B-DHKE round trip: blind, mint-sign, unblind, verify, construct proof
     assert(
       mint.verifyProofs(proofs.map((p) => ({
         amount: p.amount,
-        secret: new Uint8Array(Buffer.from(p.secret, "hex")),
+        // Pass the WIRE secret through untouched. Decoding it to bytes would be
+        // exactly the mistake that made these proofs unspendable at a real mint.
+        secret: p.secret,
         C: new Uint8Array(Buffer.from(p.C, "hex")),
       }))),
       `every proof verifies for ${amount}`,
@@ -103,7 +106,7 @@ Deno.test("a proof made with the WRONG key does not verify", async () => {
   const [C] = mint.signOutputs([{ amount: 8, B }]);
   // Unblind with a DIFFERENT amount's key than the mint used.
   const wrong = verifyBlindSignature(C, r, keys[16]);
-  assert(!mint.verifyProofs([{ amount: 16, secret, C: wrong }]));
+  assert(!mint.verifyProofs([{ amount: 16, secret: secretToWire(secret), C: wrong }]));
 });
 
 Deno.test("secrets are unique per derivation (never reuse a nonce)", () => {
