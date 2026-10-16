@@ -1,0 +1,68 @@
+name: test
+
+# R5: this existed as a by-hand habit, not a gate. The suite is the definition of
+# done, so it must run on a clean clone with no local state — that is the only way
+# "212 passed" means anything on anyone else's machine.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      # Live mint tests are OPT-IN by design: CVM_LIVE_MINT_TESTS is deliberately
+      # NOT set, so CI stays hermetic. They are skipped, and that is asserted below
+      # rather than assumed — a live test that silently starts running (or silently
+      # stops) in CI would be worse than no test.
+      - name: suite
+        run: deno task test
+
+      - name: the live mint tests must SKIP here
+        run: |
+          out=$(deno test --allow-net --allow-read --allow-env tests/mint_contract_live_test.ts 2>&1 || true)
+          echo "$out"
+          if ! echo "$out" | grep -q "4 ignored"; then
+            echo "::error::live mint tests did not skip in CI — they must be opt-in"
+            exit 1
+          fi
+
+      - name: coverage must clear the declared threshold
+        run: |
+          set -euo pipefail
+          threshold=$(cat .coverage-threshold)
+          deno task coverage
+          # Sum LF/LH from lcov rather than scraping the pretty table: the table's
+          # column layout is a presentation detail, and my first attempt to parse it
+          # returned empty — which made the gate FAIL OPEN (a malformed number
+          # silently satisfied the check). A gate that cannot read its measurement
+          # must stop the build, not wave it through.
+          read -r lf lh <<<"$(python3 - <<'PY'
+          lf = lh = 0
+          for line in open("coverage.lcov"):
+              if line.startswith("LF:"):
+                  lf += int(line.split(":", 1)[1])
+              elif line.startswith("LH:"):
+                  lh += int(line.split(":", 1)[1])
+          print(lf, lh)
+          PY
+          )"
+          if [ "${lf:-0}" -eq 0 ]; then
+            echo "::error::coverage produced no measurable lines (LF=0) — refusing to pass a gate we cannot read"
+            exit 1
+          fi
+          pct=$(python3 -c "print(f'{100*$lh/$lf:.1f}')")
+          echo "src/ line coverage: ${pct}% (threshold ${threshold}%)"
+          if python3 -c "import sys; sys.exit(0 if $pct < $threshold else 1)"; then
+            echo "::error::coverage ${pct}% is below the declared threshold ${threshold}%"
+            exit 1
+          fi
