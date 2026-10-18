@@ -32,6 +32,18 @@ export interface MeltQuote {
   request: string | null;
   state: MeltState;
   expiresAt: string | null;
+  /**
+   * Sats the melt will actually pay out (the invoice amount as the MINT read it).
+   * Required protocol data: without it an amountless melt cannot be checked.
+   */
+  amount?: number;
+  /**
+   * Sats the mint reserves for Lightning fees. REQUIRED for a valid melt:
+   * the mint enforces `inputs == outputs + fee_reserve`, so a client that guesses
+   * this number is rejected with code 11005. This field was previously discarded,
+   * which made a correct melt impossible to construct from the type.
+   */
+  feeReserve?: number;
 }
 
 export interface PaymentRail {
@@ -161,6 +173,10 @@ export class CashuRail implements PaymentRail {
       request: typeof body.request === "string" ? body.request : null,
       state,
       expiresAt: expirySeconds !== null ? new Date(expirySeconds * 1000).toISOString() : null,
+      // The mint's own numbers. Dropping them forced callers to guess the fee, and
+      // every guess was rejected with 11005 "inputs should equal outputs less fee".
+      amount: typeof body.amount === "number" ? body.amount : undefined,
+      feeReserve: typeof body.fee_reserve === "number" ? body.fee_reserve : undefined,
     };
   }
 
