@@ -76,6 +76,10 @@ export async function fundAndClaim(o: {
   claim: ClaimFn;
   sats: number;
   memo?: string;
+  /** How long to wait for the MINT to confirm, when the wallet stays silent. */
+  settlementDeadlineMs?: number;
+  /** Poll interval while waiting on the mint. */
+  pollMs?: number;
 }): Promise<{ proofs: unknown[]; keysetId: string }> {
   const inv = await o.rail.createInvoice({ sats: o.sats, memo: o.memo });
 
@@ -88,15 +92,64 @@ export async function fundAndClaim(o: {
     startedAt: Date.now(),
   });
 
-  let preimage: string;
+  // RULE 3 — THE MINT IS THE AUTHORITY, NOT THE WALLET.
+  //
+  // Measured on the fleet broker (2026-10-18): pay_invoice publishes NO reply and
+  // times out at 60s, while the broker HAS executed the payment. get_balance and
+  // lookup_invoice both reply in ~440ms, so the relay and encryption are fine —
+  // the broker simply goes quiet on spends.
+  //
+  // Therefore a silent wallet must not fail the funding. The mint knows whether its
+  // own quote was paid, over plain HTTP, and that is the only answer that matters.
+  let preimage = "";
+  let walletSilent = false;
   try {
     preimage = (await o.wallet.payInvoice(inv.bolt11)).preimage;
   } catch (e) {
-    // RULE 2 — unknown outcome. The quote is already on disk, so recovery is
-    // possible; but we must not pretend the payment failed, and must not retry.
-    throw new PaymentOutcomeUnknown(inv.quoteId, String((e as Error)?.message ?? e));
+    // Unknown outcome: the money may already have moved. Never retry the payment.
+    walletSilent = true;
+    preimage = `unconfirmed:${String((e as Error)?.message ?? e)}`;
   }
+
+  if (walletSilent) {
+    // Wait on the MINT rather than the wallet's reply.
+    const deadline = Date.now() + (o.settlementDeadlineMs ?? 120_000);
+    const pollMs = o.pollMs ?? 1_000;
+    let settled = false;
+    while (Date.now() < deadline) {
+      if ((await o.rail.checkSettlement(inv.quoteId)) === "settled") {
+        settled = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, pollMs));
+    }
+    if (!settled) {
+      // Still unknown. The quote is journalled, so recovery is possible later.
+      throw new PaymentOutcomeUnknown(
+        inv.quoteId,
+        `wallet stayed silent and the mint did not report settled within the ` +
+          `deadline. The payment may still land; recover with resumeClaim(), ` +
+          `which asks the mint again and never pays twice.`,
+      );
+    }
+  }
+
   o.journal.markPaid(inv.quoteId, preimage);
+
+  // Poll the mint once more before claiming: a successful wallet reply is not
+  // itself proof of settlement, and claiming too early returns an error the caller
+  // would misread as a permanent failure.
+  const claimDeadline = Date.now() + (o.settlementDeadlineMs ?? 120_000);
+  const pollMs = o.pollMs ?? 1_000;
+  while ((await o.rail.checkSettlement(inv.quoteId)) !== "settled") {
+    if (Date.now() > claimDeadline) {
+      throw new PaymentOutcomeUnknown(
+        inv.quoteId,
+        "payment accepted but the mint never reported the quote settled",
+      );
+    }
+    await new Promise((r) => setTimeout(r, pollMs));
+  }
 
   const res = await o.claim(inv.quoteId);
   o.journal.markClaimed(inv.quoteId, res.proofs);

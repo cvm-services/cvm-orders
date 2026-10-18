@@ -111,11 +111,16 @@ Deno.test("journal.begin runs BEFORE the wallet pays (ordering is the guarantee)
 // --- 2. TIMEOUT: unknown outcome, quote preserved, never retried ------------
 Deno.test("a pay timeout preserves the quote and is NOT retried (no double-pay)", async () => {
   const { journal, records } = makeJournal();
-  const { rail, claim } = makeRail();
+  // The mint never confirms, so the run must end in UNKNOWN — but only after
+  // consulting the mint, which is the authority (see treasury_mint_authority_test).
+  const { rail, claim } = makeRail({ settlement: "unpaid" });
   const w = makeWallet("timeout");
 
   const err = await assertRejects(
-    () => fundAndClaim({ rail, wallet: w.wallet, journal, claim, sats: 2 }),
+    () => fundAndClaim({
+      rail, wallet: w.wallet, journal, claim, sats: 2,
+      settlementDeadlineMs: 40, pollMs: 5,
+    }),
     PaymentOutcomeUnknown,
   );
 
