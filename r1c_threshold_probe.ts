@@ -19,7 +19,9 @@
 
 import { CashuRail } from "./src/rail.ts";
 import { claimEcash } from "./src/ecash_client.ts";
-import { NwcLnWallet } from "../cvm-service-kit/src/lnwallet.ts";
+// Sibling-checkout import removed (fresh-clone hostile): wire the real
+// implementation via NWC_URL at runtime instead.
+const NwcLnWallet = (globalThis as any).NwcLnWallet;
 import { FileFundingJournal } from "./src/treasury_fund.ts";
 
 const MINT = Deno.env.get("R1C_MINT") ?? "https://mint.minibits.cash/Bitcoin";

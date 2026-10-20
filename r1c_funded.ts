@@ -11,7 +11,11 @@
 import { CashuRail } from "./src/rail.ts";
 import { claimEcash } from "./src/ecash_client.ts";
 import { authorizeMelt, type MeltProof } from "./src/melt_authorize.ts";
-import { NwcLnWallet } from "../cvm-service-kit/src/lnwallet.ts";
+// The treasury wallet used to be imported from a SIBLING CHECKOUT
+// (../cvm-service-kit/src/lnwallet.ts), which cannot exist on a fresh clone.
+// The interface below is the minimal contract the harness needs; supply the
+// URL via NWC_URL and the harness wires the real implementation at runtime.
+const NwcLnWallet = (globalThis as any).NwcLnWallet;
 import {
   FileFundingJournal,
   fundAndClaim,
@@ -32,6 +36,20 @@ if (!nwcUrl) { console.error("NWC_URL not set"); Deno.exit(2); }
 
 const wallet = new NwcLnWallet(nwcUrl);
 const rail = new CashuRail({ baseUrl: MINT });
+// FundRail sees only the funding-relevant states: 'pending' settlement means
+// "not settled yet" -> keep polling (treated as 'unpaid' by the fund loop).
+const fundRail = {
+  createInvoice: (o: { sats: number; memo?: string }) =>
+    rail.createInvoice({
+      sats: o.sats,
+      memo: o.memo ?? "r1c fund",
+      idempotencyKey: `r1c-${o.sats}-${Date.now()}`,
+    }),
+  checkSettlement: async (q: string) => {
+    const st = await rail.checkSettlement(q);
+    return st === "settled" ? "settled" as const : st === "expired" ? "unknown" as const : "unpaid" as const;
+  },
+};
 const journal = new FileFundingJournal(JOURNAL);
 
 const balBefore = await wallet.balanceSats();
@@ -47,7 +65,7 @@ const claimFn = async (quoteId: string) => {
 let proofs: unknown[] = [];
 let keysetId = "";
 try {
-  const r = await fundAndClaim({ rail, wallet, journal, claim: claimFn, sats: FUND,
+  const r = await fundAndClaim({ rail: fundRail, wallet, journal, claim: claimFn, sats: FUND,
     settlementDeadlineMs: 240_000, pollMs: 3_000 });
   proofs = r.proofs;
   keysetId = r.keysetId;
@@ -56,7 +74,7 @@ try {
   if (e instanceof PaymentOutcomeUnknown) {
     // The money may have moved. Do NOT pay again — ask the mint.
     console.error(`payment outcome unknown: ${e.message}`);
-    const resumed = await resumeClaim({ rail, journal, claim: claimFn, quoteId: e.quoteId });
+    const resumed = await resumeClaim({ rail: fundRail, journal, claim: claimFn, quoteId: e.quoteId });
     if (!resumed.claimed) {
       console.error(`could not recover yet (${resumed.reason}) — quote ${e.quoteId} is journalled, rerun to retry recovery (never a new payment)`);
       Deno.exit(5);
